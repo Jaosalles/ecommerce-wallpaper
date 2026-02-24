@@ -7,7 +7,6 @@ export type User = {
   email: string;
   name: string;
   phone?: string;
-  avatar?: string;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -31,23 +30,20 @@ export type Product = {
   price: number;
   imageUrl: string;
   category: string;
-  resolutions: string[];
-  downloads: number;
   createdAt: Date;
   updatedAt: Date;
 };
 
-export type CreateProductInput = Omit<Product, 'id' | 'createdAt' | 'updatedAt' | 'downloads'>;
-
-export type ProductCategory = 'minimalist' | 'pastel' | 'dark' | 'nature' | 'abstract' | 'custom';
-
-export type ProductResolution = '540p' | '720p' | '1080p' | '1440p' | '4K';
+export type CreateProductInput = Omit<
+  Product,
+  "id" | "createdAt" | "updatedAt"
+>;
 
 // ============================================
 // ORDER TYPES
 // ============================================
 
-export type OrderStatus = 'pending' | 'paid' | 'completed' | 'cancelled';
+export type OrderStatus = "pending" | "paid" | "completed" | "cancelled";
 
 export type OrderItem = {
   id: string;
@@ -55,7 +51,6 @@ export type OrderItem = {
   productId: string;
   quantity: number;
   price: number;
-  resolution: string;
   createdAt: Date;
 };
 
@@ -77,7 +72,6 @@ export type CreateOrderInput = {
     productId: string;
     quantity: number;
     price: number;
-    resolution: string;
   }[];
 };
 
@@ -89,7 +83,6 @@ export type CartItem = {
   productId: string;
   product?: Product;
   quantity: number;
-  resolution: ProductResolution;
   price: number;
 };
 
@@ -130,7 +123,6 @@ export type WhatsAppMessage = {
     name: string;
     quantity: number;
     price: number;
-    resolution: string;
   }>;
 };
 
@@ -151,6 +143,6 @@ export type LoginInput = {
 };
 
 export type AuthResponse = {
-  user: Omit<User, 'password'>;
+  user: Omit<User, "password">;
   token: string;
 };

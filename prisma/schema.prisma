@@ -38,9 +38,7 @@ model Product {
   description String
   price       Float
   imageUrl    String     // URL da imagem (storage local ou S3)
-  category    String     // Ex: "minimalist", "pastel", "dark"
-  resolutions String[]   // Array de resoluções: ["540p", "720p", "1080p", "1440p", "4K"]
-  downloads   Int        @default(0)
+  category    String     // Categorias definidas no frontend
   
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
@@ -85,7 +83,6 @@ model OrderItem {
   
   quantity  Int        @default(1)
   price     Float      // Preço no momento da compra
-  resolution String    // Resolução escolhida pelo cliente
   
   createdAt DateTime   @default(now())
 

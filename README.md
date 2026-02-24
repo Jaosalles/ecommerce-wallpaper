@@ -35,19 +35,19 @@ Desenvolvimento de uma plataforma de e-commerce moderna para comercialização d
 
 ## 💻 Stack Técnico
 
-| Camada | Tecnologia | Versão |
-|--------|------------|--------|
-| **Frontend** | React + TypeScript | 18.3 + 5.3 |
-|  | Tailwind CSS | 3.4 |
-|  | Next.js App Router | 14.x |
-| **Backend** | Next.js API Routes | 14.x |
-|  | Node.js | 20 LTS |
-| **Database** | PostgreSQL (Supabase) | 15+ |
-| **ORM** | Prisma | 5.x |
-| **Validação** | Zod | 3.x |
-| **HTTP Client** | SWR | 2.2+ |
-| **Auth** | JWT + Bcrypt | - |
-| **Hospedagem** | Vercel | - |
+| Camada          | Tecnologia            | Versão     |
+| --------------- | --------------------- | ---------- |
+| **Frontend**    | React + TypeScript    | 18.3 + 5.3 |
+|                 | Tailwind CSS          | 3.4        |
+|                 | Next.js App Router    | 14.x       |
+| **Backend**     | Next.js API Routes    | 14.x       |
+|                 | Node.js               | 20 LTS     |
+| **Database**    | PostgreSQL (Supabase) | 15+        |
+| **ORM**         | Prisma                | 5.x        |
+| **Validação**   | Zod                   | 3.x        |
+| **HTTP Client** | SWR                   | 2.2+       |
+| **Auth**        | JWT + Bcrypt          | -          |
+| **Hospedagem**  | Vercel                | -          |
 
 ---
 
@@ -176,18 +176,21 @@ src/
 ## 🚀 Próximas Fases
 
 **Fase 1 (MVP - 4-6 semanas):** Core features
+
 - Listagem de produtos
 - Carrinho de compras
 - Checkout WhatsApp
 - Autenticação JWT
 
 **Fase 2 (3-4 semanas):** Melhorias
+
 - Favoritos/Wishlist
 - Instagram Feed
 - Sistema de cupons
 - Performance otimizada
 
 **Fase 3 (Pós-lançamento):** Escala
+
 - AWS S3
 - WhatsApp Business API
 - Analytics avançado
