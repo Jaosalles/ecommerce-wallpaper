@@ -34,7 +34,10 @@ async function main() {
     },
   });
 
-  console.log("👥 Usuários criados:", { user1: user1.email, user2: user2.email });
+  console.log("👥 Usuários criados:", {
+    user1: user1.email,
+    user2: user2.email,
+  });
 
   // Criar produtos
   const products = await Promise.all([

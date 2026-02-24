@@ -104,19 +104,26 @@ Acesse `http://localhost:3000` no navegador.
 - [x] Inicializar Next.js + TypeScript + Tailwind
 - [x] Instalar dependências (Prisma, Zod, SWR, JWT, bcrypt)
 - [x] Configurar Prisma schema
-- [x] Criar estrutura de tipos TypeScript
-- [x] Criar estrutura de pastas (lib, types, context, hooks)
-- [x] Criar variáveis de ambiente (.env.example)
+- [x] Criar estrutura de tipos TypeScript (simplificado sem resolutions)
+- [x] Criar estrutura de pastas (lib, types, context, hooks, public/uploads)
+- [x] Criar variáveis de ambiente (.env.example e .env.local)
+- [x] Conectar Supabase - Conta criada e DATABASE_URL configurada
+- [x] Rodar Migrations - Schema criado no banco com sucesso
+- [x] Criar Seed Data - 2 usuários, 5 produtos, 1 pedido, 2 favoritos
+- [x] Inicializar Git - Primeiro commit com estrutura base
 
-### 📋 A Fazer
+### 📋 A Fazer (Fase 1)
 
-1. [ ] **Conectar Supabase** - Criar conta e obter DATABASE_URL
-2. [ ] **Rodar Migrations** - Criar schema no banco
-3. [ ] **Criar Seed Data** - Dados iniciais para dev
-4. [ ] **Implementar Autenticação JWT** - Login/Register
-5. [ ] **Criar API Routes** - CRUD de produtos, carrinho, pedidos
-6. [ ] **Inicializar Git** - Primeiro commit e repositório remoto
-7. [ ] **Implementar Frontend Base** - Layout, componentes, páginas
+1. [ ] **Implementar Autenticação JWT** - Login/Register/Logout
+2. [ ] **Criar API Routes Base** - `/api/auth`, `/api/products`
+3. [ ] **Implementar API de Produtos** - GET/POST/PUT/DELETE
+4. [ ] **Implementar API de Carrinho** - GET/POST/DELETE
+5. [ ] **Implementar API de Pedidos** - GET/POST
+6. [ ] **Frontend Base** - Layout principal, header, footer
+7. [ ] **Página de Produtos** - Listagem e filtros
+8. [ ] **Página de Produto** - Detalhes e adicionar ao carrinho
+9. [ ] **Carrinho de Compras** - Interface e lógica
+10. [ ] **Checkout com WhatsApp** - Link e integração
 
 ---
 
