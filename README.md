@@ -1,36 +1,194 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🎨 E-Commerce Wallpaper Platform
 
-## Getting Started
+Plataforma de e-commerce especializada em papéis de parede digitais com sistema de gestão de catálogo, pagamentos e distribuição online.
 
-First, run the development server:
+**Repositório:** [GitHub - ecommerce-wallpaper](https://github.com/seu-usuario/ecommerce-wallpaper)
+
+---
+
+## 📑 Índice
+
+- [Visão Geral e Objetivos](#visão-geral-e-objetivos)
+- [Stack Técnico](#stack-técnico)
+- [Plano de Projeto](#plano-de-projeto)
+- [Guia de Setup](#guia-de-setup)
+- [Próximos Passos](#próximos-passos)
+- [Notas Técnicas](#notas-técnicas)
+
+---
+
+## 🎯 Visão Geral e Objetivos
+
+### Visão Geral
+
+Desenvolvimento de uma plataforma de e-commerce moderna para comercialização de papéis de parede digitais em alta resolução, com suporte a diferentes resoluções de tela e sistemas operacionais.
+
+### Objetivos Principais
+
+- ✅ Criar plataforma de vendas escalável e responsiva
+- ✅ Facilitar gerenciamento de catálogo de produtos
+- ✅ Proporcionar experiência de usuário intuitiva
+- ✅ Garantir segurança de dados e transações
+- ✅ Permitir entrega digital instantânea dos produtos
+
+---
+
+## 💻 Stack Técnico
+
+| Camada | Tecnologia | Versão |
+|--------|------------|--------|
+| **Frontend** | React + TypeScript | 18.3 + 5.3 |
+|  | Tailwind CSS | 3.4 |
+|  | Next.js App Router | 14.x |
+| **Backend** | Next.js API Routes | 14.x |
+|  | Node.js | 20 LTS |
+| **Database** | PostgreSQL (Supabase) | 15+ |
+| **ORM** | Prisma | 5.x |
+| **Validação** | Zod | 3.x |
+| **HTTP Client** | SWR | 2.2+ |
+| **Auth** | JWT + Bcrypt | - |
+| **Hospedagem** | Vercel | - |
+
+---
+
+## 🛠️ Setup Local
+
+### Pré-requisitos
+
+- Node.js 20 LTS
+- npm 10+ ou yarn 4+
+- Conta Supabase gratuita
+
+### Passos
+
+#### 1. Instalar Dependências (já feito)
+
+```bash
+npm install
+```
+
+#### 2. Configurar Variáveis de Ambiente
+
+```bash
+cp .env.example .env.local
+# Editar .env.local com suas credenciais Supabase
+```
+
+#### 3. Conectar Banco de Dados
+
+```bash
+# Criar conta em https://supabase.com
+# Copiar DATABASE_URL para .env.local
+
+# Rodar migrations
+npx prisma migrate dev --name init
+
+# Gerar cliente Prisma
+npx prisma generate
+```
+
+#### 4. Iniciar Servidor
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Acesse `http://localhost:3000` no navegador.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 🎯 Próximos Passos
 
-## Learn More
+### ✅ Completado
 
-To learn more about Next.js, take a look at the following resources:
+- [x] Inicializar Next.js + TypeScript + Tailwind
+- [x] Instalar dependências (Prisma, Zod, SWR, JWT, bcrypt)
+- [x] Configurar Prisma schema
+- [x] Criar estrutura de tipos TypeScript
+- [x] Criar estrutura de pastas (lib, types, context, hooks)
+- [x] Criar variáveis de ambiente (.env.example)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 📋 A Fazer
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. [ ] **Conectar Supabase** - Criar conta e obter DATABASE_URL
+2. [ ] **Rodar Migrations** - Criar schema no banco
+3. [ ] **Criar Seed Data** - Dados iniciais para dev
+4. [ ] **Implementar Autenticação JWT** - Login/Register
+5. [ ] **Criar API Routes** - CRUD de produtos, carrinho, pedidos
+6. [ ] **Inicializar Git** - Primeiro commit e repositório remoto
+7. [ ] **Implementar Frontend Base** - Layout, componentes, páginas
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 📝 Notas Técnicas
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Por que Next.js Full-Stack?
+
+- Uma única stack (Frontend + Backend)
+- Deploy trivial com Vercel
+- API Routes em `/app/api/`
+- Type safety end-to-end com TypeScript
+
+### Por que WhatsApp (não Business)?
+
+- **Zero custo inicial** - Apenas um link
+- **Zero setup** - Nenhuma aprovação
+- **Relacionamento direto** - Conversa natural
+- **MVP mais rápido**
+
+### Por que Storage Local (não S3)?
+
+- **MVP sem custos** - Usando `/public`
+- **Suficiente para primeiros meses**
+- **Fácil migrar depois** para S3
+
+### Segurança
+
+- JWT em httpOnly cookies
+- Validação Zod em client e server
+- Hash de senhas com bcrypt
+- Secrets em variáveis de ambiente HTTPS obrigatório em produção
+
+---
+
+## 📊 Estrutura de Pastas
+
+```
+src/
+├── app/
+│   ├── api/              → API Routes (backend)
+│   ├── (auth)/           → Páginas autenticação
+│   ├── (dashboard)/     → Dashboard do usuário
+│   └── page.tsx         → Home
+├── components/          → Componentes React
+├── context/             → React Context
+├── hooks/               → Custom hooks
+├── lib/                 → Funções utilitárias
+│   ├── prisma.ts       → Cliente Prisma
+│   ├── auth.ts         → Funções JWT
+│   └── validators.ts   → Schemas Zod
+├── types/               → TypeScript types
+└── styles/              → CSS global
+```
+
+---
+
+## 🚀 Próximas Fases
+
+**Fase 1 (MVP - 4-6 semanas):** Core features
+- Listagem de produtos
+- Carrinho de compras
+- Checkout WhatsApp
+- Autenticação JWT
+
+**Fase 2 (3-4 semanas):** Melhorias
+- Favoritos/Wishlist
+- Instagram Feed
+- Sistema de cupons
+- Performance otimizada
+
+**Fase 3 (Pós-lançamento):** Escala
+- AWS S3
+- WhatsApp Business API
+- Analytics avançado
+- Multi-idioma

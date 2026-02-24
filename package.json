@@ -9,9 +9,16 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@prisma/client": "^7.4.1",
+    "bcryptjs": "^3.0.3",
+    "dotenv-cli": "^11.0.0",
+    "jsonwebtoken": "^9.0.3",
     "next": "16.1.6",
+    "prisma": "^7.4.1",
     "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react-dom": "19.2.3",
+    "swr": "^2.4.0",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

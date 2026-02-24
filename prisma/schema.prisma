@@ -1,0 +1,154 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// MODELS - MVP (Fase 1)
+// ============================================
+
+model User {
+  id        String     @id @default(cuid())
+  email     String     @unique
+  password  String     // Armazenar com hash bcrypt
+  name      String
+  phone     String?
+  avatar    String?    // URL da imagem de perfil
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  
+  // Relações
+  orders    Order[]
+  favorites Favorite[]
+
+  @@index([email])
+}
+
+model Product {
+  id          String     @id @default(cuid())
+  name        String
+  slug        String     @unique
+  description String
+  price       Float
+  imageUrl    String     // URL da imagem (storage local ou S3)
+  category    String     // Ex: "minimalist", "pastel", "dark"
+  resolutions String[]   // Array de resoluções: ["540p", "720p", "1080p", "1440p", "4K"]
+  downloads   Int        @default(0)
+  
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  
+  // Relações
+  orderItems  OrderItem[]
+  favorites   Favorite[]
+
+  @@index([slug])
+  @@index([category])
+}
+
+model Order {
+  id        String     @id @default(cuid())
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  total     Float
+  status    String     @default("pending") // pending, paid, completed
+  
+  // WhatsApp info (para rastreamento)
+  whatsappMessageId String?
+  whatsappSentAt    DateTime?
+  
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  
+  // Relações
+  items     OrderItem[]
+
+  @@index([userId])
+  @@index([status])
+}
+
+model OrderItem {
+  id        String     @id @default(cuid())
+  orderId   String
+  order     Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  
+  productId String
+  product   Product    @relation(fields: [productId], references: [id])
+  
+  quantity  Int        @default(1)
+  price     Float      // Preço no momento da compra
+  resolution String    // Resolução escolhida pelo cliente
+  
+  createdAt DateTime   @default(now())
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+model Favorite {
+  id        String     @id @default(cuid())
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  productId String
+  product   Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime   @default(now())
+
+  @@unique([userId, productId])
+  @@index([userId])
+  @@index([productId])
+}
+
+// ============================================
+// MODELS - Fase 2 (comentado para depois)
+// ============================================
+
+// model Review {
+//   id        String     @id @default(cuid())
+//   productId String
+//   product   Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+//   userId    String
+//   user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+//   
+//   rating    Int        // 1-5
+//   comment   String?
+//   createdAt DateTime   @default(now())
+//   updatedAt DateTime   @updatedAt
+//
+//   @@index([productId])
+//   @@index([userId])
+// }
+
+// model Coupon {
+//   id        String     @id @default(cuid())
+//   code      String     @unique
+//   discount  Float      // Porcentagem de desconto
+//   expiresAt DateTime
+//   maxUses   Int?
+//   currentUses Int      @default(0)
+//   createdAt DateTime   @default(now())
+//
+//   @@index([code])
+// }
+
+// model InstagramPost {
+//   id        String     @id @default(cuid())
+//   postId    String     @unique // ID do Instagram
+//   caption   String
+//   mediaUrl  String     // URL da imagem/vídeo
+//   likesCount Int       @default(0)
+//   commentsCount Int    @default(0)
+//   lastSyncedAt DateTime @updatedAt
+//   createdAt DateTime   @default(now())
+//
+//   @@index([postId])
+// }
