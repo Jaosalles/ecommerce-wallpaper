@@ -5,6 +5,7 @@ import {
   setAuthCookie,
   signToken,
 } from "@/lib/auth";
+import { errorCodes, errorMessages } from "@/lib/error-messages";
 import { prisma } from "@/lib/prisma";
 import { registerSchema } from "@/lib/validators";
 import { NextRequest } from "next/server";
@@ -15,7 +16,11 @@ export async function POST(request: NextRequest) {
     const parsed = registerSchema.safeParse(body);
 
     if (!parsed.success) {
-      return fail(parsed.error.issues[0]?.message ?? "Dados inválidos", 400);
+      return fail(
+        parsed.error.issues[0]?.message ?? errorMessages.common.invalidData,
+        400,
+        { code: errorCodes.common.invalidData },
+      );
     }
 
     const { email, password, name, phone } = parsed.data;
@@ -23,7 +28,9 @@ export async function POST(request: NextRequest) {
     const existingUser = await prisma.user.findUnique({ where: { email } });
 
     if (existingUser) {
-      return fail("Email já cadastrado", 409);
+      return fail(errorMessages.auth.emailAlreadyRegistered, 409, {
+        code: errorCodes.auth.emailAlreadyRegistered,
+      });
     }
 
     const hashedPassword = await hashPassword(password);
@@ -48,6 +55,8 @@ export async function POST(request: NextRequest) {
       201,
     );
   } catch {
-    return fail("Erro interno ao registrar usuário", 500);
+    return fail(errorMessages.auth.registerUnexpected, 500, {
+      code: errorCodes.auth.registerUnexpected,
+    });
   }
 }

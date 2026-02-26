@@ -1,6 +1,7 @@
 import { fail, ok } from "@/lib/api";
 import { getAuthenticatedUserFromCookie } from "@/lib/auth";
 import { authz } from "@/lib/authz/facade";
+import { errorCodes, errorMessages } from "@/lib/error-messages";
 import { prisma } from "@/lib/prisma";
 import { createCollectionSchema } from "@/lib/validators";
 import { NextRequest } from "next/server";
@@ -22,7 +23,9 @@ export async function GET() {
 
     return ok(collections);
   } catch {
-    return fail("Erro ao buscar coleções", 500);
+    return fail(errorMessages.collection.fetchManyUnexpected, 500, {
+      code: errorCodes.collection.fetchManyUnexpected,
+    });
   }
 }
 
@@ -32,14 +35,25 @@ export async function POST(request: NextRequest) {
     const authorization = authz.authorize(user, "collection:create");
 
     if (!authorization.ok) {
-      return fail(authorization.error, authorization.status);
+      const authorizationCode =
+        authorization.status === 401
+          ? errorCodes.common.notAuthenticated
+          : errorCodes.common.accessDenied;
+
+      return fail(authorization.error, authorization.status, {
+        code: authorizationCode,
+      });
     }
 
     const body = await request.json();
     const parsed = createCollectionSchema.safeParse(body);
 
     if (!parsed.success) {
-      return fail(parsed.error.issues[0]?.message ?? "Dados inválidos", 400);
+      return fail(
+        parsed.error.issues[0]?.message ?? errorMessages.common.invalidData,
+        400,
+        { code: errorCodes.common.invalidData },
+      );
     }
 
     const existingCollection = await prisma.collection.findUnique({
@@ -48,7 +62,9 @@ export async function POST(request: NextRequest) {
     });
 
     if (existingCollection) {
-      return fail("Já existe uma coleção com este slug", 409);
+      return fail(errorMessages.collection.duplicateSlug, 409, {
+        code: errorCodes.collection.duplicateSlug,
+      });
     }
 
     const collection = await prisma.collection.create({
@@ -57,6 +73,8 @@ export async function POST(request: NextRequest) {
 
     return ok(collection, 201);
   } catch {
-    return fail("Erro ao criar coleção", 500);
+    return fail(errorMessages.collection.createUnexpected, 500, {
+      code: errorCodes.collection.createUnexpected,
+    });
   }
 }

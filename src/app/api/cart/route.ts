@@ -1,4 +1,5 @@
 import { fail, ok } from "@/lib/api";
+import { errorCodes, errorMessages } from "@/lib/error-messages";
 import { prisma } from "@/lib/prisma";
 import { cartItemInputSchema } from "@/lib/validators";
 import { NextRequest } from "next/server";
@@ -114,7 +115,9 @@ export async function GET(request: NextRequest) {
 
     return ok(cart);
   } catch {
-    return fail("Erro ao buscar carrinho", 500);
+    return fail(errorMessages.cart.fetchUnexpected, 500, {
+      code: errorCodes.cart.fetchUnexpected,
+    });
   }
 }
 
@@ -124,7 +127,11 @@ export async function POST(request: NextRequest) {
     const parsed = cartItemInputSchema.safeParse(body);
 
     if (!parsed.success) {
-      return fail(parsed.error.issues[0]?.message ?? "Dados inválidos", 400);
+      return fail(
+        parsed.error.issues[0]?.message ?? errorMessages.common.invalidData,
+        400,
+        { code: errorCodes.common.invalidData },
+      );
     }
 
     const { productId, quantity } = parsed.data;
@@ -135,7 +142,9 @@ export async function POST(request: NextRequest) {
     });
 
     if (!product) {
-      return fail("Produto não encontrado", 404);
+      return fail(errorMessages.product.notFound, 404, {
+        code: errorCodes.product.notFound,
+      });
     }
 
     const cookieValue = request.cookies.get(CART_COOKIE_NAME)?.value;
@@ -163,7 +172,9 @@ export async function POST(request: NextRequest) {
 
     return response;
   } catch {
-    return fail("Erro ao atualizar carrinho", 500);
+    return fail(errorMessages.cart.updateUnexpected, 500, {
+      code: errorCodes.cart.updateUnexpected,
+    });
   }
 }
 
@@ -196,6 +207,8 @@ export async function DELETE(request: NextRequest) {
 
     return response;
   } catch {
-    return fail("Erro ao remover item do carrinho", 500);
+    return fail(errorMessages.cart.deleteUnexpected, 500, {
+      code: errorCodes.cart.deleteUnexpected,
+    });
   }
 }

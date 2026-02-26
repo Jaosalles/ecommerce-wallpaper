@@ -1,6 +1,12 @@
 import { fail, ok } from "@/lib/api";
 import { getAuthenticatedUserFromCookie } from "@/lib/auth";
 import { authz } from "@/lib/authz/facade";
+import {
+  errorCodes,
+  errorMessages,
+  mapProductDeleteError,
+  successMessages,
+} from "@/lib/error-messages";
 import { prisma } from "@/lib/prisma";
 import { updateProductSchema } from "@/lib/validators";
 import { NextRequest } from "next/server";
@@ -21,12 +27,16 @@ export async function GET(_: NextRequest, { params }: Params) {
     });
 
     if (!product) {
-      return fail("Produto não encontrado", 404);
+      return fail(errorMessages.product.notFound, 404, {
+        code: errorCodes.product.notFound,
+      });
     }
 
     return ok(product);
   } catch {
-    return fail("Erro ao buscar produto", 500);
+    return fail(errorMessages.product.fetchOneUnexpected, 500, {
+      code: errorCodes.product.fetchOneUnexpected,
+    });
   }
 }
 
@@ -36,7 +46,14 @@ export async function PUT(request: NextRequest, { params }: Params) {
     const authorization = authz.authorize(user, "product:update");
 
     if (!authorization.ok) {
-      return fail(authorization.error, authorization.status);
+      const authorizationCode =
+        authorization.status === 401
+          ? errorCodes.common.notAuthenticated
+          : errorCodes.common.accessDenied;
+
+      return fail(authorization.error, authorization.status, {
+        code: authorizationCode,
+      });
     }
 
     const { id } = await params;
@@ -45,7 +62,11 @@ export async function PUT(request: NextRequest, { params }: Params) {
     const parsed = updateProductSchema.safeParse(body);
 
     if (!parsed.success) {
-      return fail(parsed.error.issues[0]?.message ?? "Dados inválidos", 400);
+      return fail(
+        parsed.error.issues[0]?.message ?? errorMessages.common.invalidData,
+        400,
+        { code: errorCodes.common.invalidData },
+      );
     }
 
     if (parsed.data.collectionId) {
@@ -55,7 +76,9 @@ export async function PUT(request: NextRequest, { params }: Params) {
       });
 
       if (!collection) {
-        return fail("Coleção não encontrada", 404);
+        return fail(errorMessages.collection.notFound, 404, {
+          code: errorCodes.collection.notFound,
+        });
       }
     }
 
@@ -69,7 +92,9 @@ export async function PUT(request: NextRequest, { params }: Params) {
 
     return ok(product);
   } catch {
-    return fail("Erro ao atualizar produto", 500);
+    return fail(errorMessages.product.updateUnexpected, 500, {
+      code: errorCodes.product.updateUnexpected,
+    });
   }
 }
 
@@ -79,15 +104,32 @@ export async function DELETE(_: NextRequest, { params }: Params) {
     const authorization = authz.authorize(user, "product:delete");
 
     if (!authorization.ok) {
-      return fail(authorization.error, authorization.status);
+      const authorizationCode =
+        authorization.status === 401
+          ? errorCodes.common.notAuthenticated
+          : errorCodes.common.accessDenied;
+
+      return fail(authorization.error, authorization.status, {
+        code: authorizationCode,
+      });
     }
 
     const { id } = await params;
 
     await prisma.product.delete({ where: { id } });
 
-    return ok({ message: "Produto removido com sucesso" });
-  } catch {
-    return fail("Erro ao remover produto", 500);
+    return ok({ message: successMessages.product.deleted });
+  } catch (errorValue) {
+    const mappedError = mapProductDeleteError(errorValue);
+
+    if (mappedError) {
+      return fail(mappedError.message, mappedError.status, {
+        code: mappedError.code,
+      });
+    }
+
+    return fail(errorMessages.product.deleteUnexpected, 500, {
+      code: errorCodes.product.deleteUnexpected,
+    });
   }
 }

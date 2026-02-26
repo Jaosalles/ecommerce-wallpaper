@@ -1,5 +1,6 @@
 import { fail, ok } from "@/lib/api";
 import { getAuthTokenFromCookie, verifyToken } from "@/lib/auth";
+import { errorCodes, errorMessages } from "@/lib/error-messages";
 import { prisma } from "@/lib/prisma";
 
 export async function GET() {
@@ -7,7 +8,9 @@ export async function GET() {
     const token = await getAuthTokenFromCookie();
 
     if (!token) {
-      return fail("Não autenticado", 401);
+      return fail(errorMessages.common.notAuthenticated, 401, {
+        code: errorCodes.common.notAuthenticated,
+      });
     }
 
     const payload = verifyToken(token);
@@ -27,11 +30,15 @@ export async function GET() {
     });
 
     if (!user) {
-      return fail("Usuário não encontrado", 404);
+      return fail(errorMessages.auth.userNotFound, 404, {
+        code: errorCodes.auth.userNotFound,
+      });
     }
 
     return ok({ user });
   } catch {
-    return fail("Token inválido", 401);
+    return fail(errorMessages.auth.invalidToken, 401, {
+      code: errorCodes.auth.invalidToken,
+    });
   }
 }

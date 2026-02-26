@@ -1,6 +1,7 @@
 import { fail, ok } from "@/lib/api";
 import { getAuthenticatedUserFromCookie } from "@/lib/auth";
 import { authz } from "@/lib/authz/facade";
+import { errorCodes, errorMessages } from "@/lib/error-messages";
 import { prisma } from "@/lib/prisma";
 import { createProductSchema } from "@/lib/validators";
 import { NextRequest } from "next/server";
@@ -29,7 +30,9 @@ export async function GET(request: NextRequest) {
 
     return ok(products);
   } catch {
-    return fail("Erro ao buscar produtos", 500);
+    return fail(errorMessages.product.fetchManyUnexpected, 500, {
+      code: errorCodes.product.fetchManyUnexpected,
+    });
   }
 }
 
@@ -39,14 +42,25 @@ export async function POST(request: NextRequest) {
     const authorization = authz.authorize(user, "product:create");
 
     if (!authorization.ok) {
-      return fail(authorization.error, authorization.status);
+      const authorizationCode =
+        authorization.status === 401
+          ? errorCodes.common.notAuthenticated
+          : errorCodes.common.accessDenied;
+
+      return fail(authorization.error, authorization.status, {
+        code: authorizationCode,
+      });
     }
 
     const body = await request.json();
     const parsed = createProductSchema.safeParse(body);
 
     if (!parsed.success) {
-      return fail(parsed.error.issues[0]?.message ?? "Dados inválidos", 400);
+      return fail(
+        parsed.error.issues[0]?.message ?? errorMessages.common.invalidData,
+        400,
+        { code: errorCodes.common.invalidData },
+      );
     }
 
     const existingProduct = await prisma.product.findUnique({
@@ -54,7 +68,9 @@ export async function POST(request: NextRequest) {
     });
 
     if (existingProduct) {
-      return fail("Já existe um produto com este slug", 409);
+      return fail(errorMessages.product.duplicateSlug, 409, {
+        code: errorCodes.product.duplicateSlug,
+      });
     }
 
     const collection = await prisma.collection.findUnique({
@@ -63,7 +79,9 @@ export async function POST(request: NextRequest) {
     });
 
     if (!collection) {
-      return fail("Coleção não encontrada", 404);
+      return fail(errorMessages.collection.notFound, 404, {
+        code: errorCodes.collection.notFound,
+      });
     }
 
     const product = await prisma.product.create({
@@ -75,6 +93,8 @@ export async function POST(request: NextRequest) {
 
     return ok(product, 201);
   } catch {
-    return fail("Erro ao criar produto", 500);
+    return fail(errorMessages.product.createUnexpected, 500, {
+      code: errorCodes.product.createUnexpected,
+    });
   }
 }

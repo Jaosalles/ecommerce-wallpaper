@@ -1,5 +1,6 @@
 import { fail, ok } from "@/lib/api";
 import { getAuthTokenFromCookie, verifyToken } from "@/lib/auth";
+import { errorCodes, errorMessages } from "@/lib/error-messages";
 import { prisma } from "@/lib/prisma";
 import { createOrderSchema } from "@/lib/validators";
 import { NextRequest } from "next/server";
@@ -47,7 +48,9 @@ export async function GET() {
     const userId = await getAuthenticatedUserId();
 
     if (!userId) {
-      return fail("Não autenticado", 401);
+      return fail(errorMessages.common.notAuthenticated, 401, {
+        code: errorCodes.common.notAuthenticated,
+      });
     }
 
     const orders = await prisma.order.findMany({
@@ -78,7 +81,9 @@ export async function GET() {
 
     return ok(orders);
   } catch {
-    return fail("Erro ao buscar pedidos", 500);
+    return fail(errorMessages.order.fetchUnexpected, 500, {
+      code: errorCodes.order.fetchUnexpected,
+    });
   }
 }
 
@@ -87,14 +92,20 @@ export async function POST(request: NextRequest) {
     const userId = await getAuthenticatedUserId();
 
     if (!userId) {
-      return fail("Não autenticado", 401);
+      return fail(errorMessages.common.notAuthenticated, 401, {
+        code: errorCodes.common.notAuthenticated,
+      });
     }
 
     const body = await request.json();
     const parsed = createOrderSchema.safeParse(body);
 
     if (!parsed.success) {
-      return fail(parsed.error.issues[0]?.message ?? "Dados inválidos", 400);
+      return fail(
+        parsed.error.issues[0]?.message ?? errorMessages.common.invalidData,
+        400,
+        { code: errorCodes.common.invalidData },
+      );
     }
 
     const itemMap = new Map<string, number>();
@@ -119,7 +130,9 @@ export async function POST(request: NextRequest) {
     });
 
     if (products.length !== uniqueProductIds.length) {
-      return fail("Um ou mais produtos não foram encontrados", 404);
+      return fail(errorMessages.order.productNotFound, 404, {
+        code: errorCodes.order.productNotFound,
+      });
     }
 
     const productPriceMap = new Map(
@@ -176,6 +189,8 @@ export async function POST(request: NextRequest) {
       201,
     );
   } catch {
-    return fail("Erro ao criar pedido", 500);
+    return fail(errorMessages.order.createUnexpected, 500, {
+      code: errorCodes.order.createUnexpected,
+    });
   }
 }

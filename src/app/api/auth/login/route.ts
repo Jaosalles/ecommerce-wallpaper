@@ -5,6 +5,7 @@ import {
   setAuthCookie,
   signToken,
 } from "@/lib/auth";
+import { errorCodes, errorMessages } from "@/lib/error-messages";
 import { prisma } from "@/lib/prisma";
 import { loginSchema } from "@/lib/validators";
 import { NextRequest } from "next/server";
@@ -15,7 +16,11 @@ export async function POST(request: NextRequest) {
     const parsed = loginSchema.safeParse(body);
 
     if (!parsed.success) {
-      return fail(parsed.error.issues[0]?.message ?? "Dados inválidos", 400);
+      return fail(
+        parsed.error.issues[0]?.message ?? errorMessages.common.invalidData,
+        400,
+        { code: errorCodes.common.invalidData },
+      );
     }
 
     const { email, password } = parsed.data;
@@ -23,13 +28,17 @@ export async function POST(request: NextRequest) {
     const user = await prisma.user.findUnique({ where: { email } });
 
     if (!user) {
-      return fail("Credenciais inválidas", 401);
+      return fail(errorMessages.auth.invalidCredentials, 401, {
+        code: errorCodes.auth.invalidCredentials,
+      });
     }
 
     const passwordIsValid = await comparePassword(password, user.password);
 
     if (!passwordIsValid) {
-      return fail("Credenciais inválidas", 401);
+      return fail(errorMessages.auth.invalidCredentials, 401, {
+        code: errorCodes.auth.invalidCredentials,
+      });
     }
 
     const token = signToken({ userId: user.id, email: user.email });
@@ -40,6 +49,8 @@ export async function POST(request: NextRequest) {
       token,
     });
   } catch {
-    return fail("Erro interno ao autenticar usuário", 500);
+    return fail(errorMessages.auth.loginUnexpected, 500, {
+      code: errorCodes.auth.loginUnexpected,
+    });
   }
 }

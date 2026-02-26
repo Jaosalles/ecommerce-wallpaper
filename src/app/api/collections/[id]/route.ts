@@ -1,6 +1,11 @@
 import { fail, ok } from "@/lib/api";
 import { getAuthenticatedUserFromCookie } from "@/lib/auth";
 import { authz } from "@/lib/authz/facade";
+import {
+  errorCodes,
+  errorMessages,
+  successMessages,
+} from "@/lib/error-messages";
 import { prisma } from "@/lib/prisma";
 import { updateCollectionSchema } from "@/lib/validators";
 import { NextRequest } from "next/server";
@@ -25,12 +30,16 @@ export async function GET(_: NextRequest, { params }: Params) {
     });
 
     if (!collection) {
-      return fail("Coleção não encontrada", 404);
+      return fail(errorMessages.collection.notFound, 404, {
+        code: errorCodes.collection.notFound,
+      });
     }
 
     return ok(collection);
   } catch {
-    return fail("Erro ao buscar coleção", 500);
+    return fail(errorMessages.collection.fetchOneUnexpected, 500, {
+      code: errorCodes.collection.fetchOneUnexpected,
+    });
   }
 }
 
@@ -40,7 +49,14 @@ export async function PUT(request: NextRequest, { params }: Params) {
     const authorization = authz.authorize(user, "collection:update");
 
     if (!authorization.ok) {
-      return fail(authorization.error, authorization.status);
+      const authorizationCode =
+        authorization.status === 401
+          ? errorCodes.common.notAuthenticated
+          : errorCodes.common.accessDenied;
+
+      return fail(authorization.error, authorization.status, {
+        code: authorizationCode,
+      });
     }
 
     const { id } = await params;
@@ -49,7 +65,11 @@ export async function PUT(request: NextRequest, { params }: Params) {
     const parsed = updateCollectionSchema.safeParse(body);
 
     if (!parsed.success) {
-      return fail(parsed.error.issues[0]?.message ?? "Dados inválidos", 400);
+      return fail(
+        parsed.error.issues[0]?.message ?? errorMessages.common.invalidData,
+        400,
+        { code: errorCodes.common.invalidData },
+      );
     }
 
     if (parsed.data.slug) {
@@ -59,7 +79,9 @@ export async function PUT(request: NextRequest, { params }: Params) {
       });
 
       if (collectionWithSlug && collectionWithSlug.id !== id) {
-        return fail("Já existe uma coleção com este slug", 409);
+        return fail(errorMessages.collection.duplicateSlug, 409, {
+          code: errorCodes.collection.duplicateSlug,
+        });
       }
     }
 
@@ -70,7 +92,9 @@ export async function PUT(request: NextRequest, { params }: Params) {
 
     return ok(collection);
   } catch {
-    return fail("Erro ao atualizar coleção", 500);
+    return fail(errorMessages.collection.updateUnexpected, 500, {
+      code: errorCodes.collection.updateUnexpected,
+    });
   }
 }
 
@@ -80,7 +104,14 @@ export async function DELETE(_: NextRequest, { params }: Params) {
     const authorization = authz.authorize(user, "collection:delete");
 
     if (!authorization.ok) {
-      return fail(authorization.error, authorization.status);
+      const authorizationCode =
+        authorization.status === 401
+          ? errorCodes.common.notAuthenticated
+          : errorCodes.common.accessDenied;
+
+      return fail(authorization.error, authorization.status, {
+        code: authorizationCode,
+      });
     }
 
     const { id } = await params;
@@ -90,18 +121,19 @@ export async function DELETE(_: NextRequest, { params }: Params) {
     });
 
     if (productsCount > 0) {
-      return fail(
-        "Não é possível remover coleção com produtos vinculados",
-        409,
-      );
+      return fail(errorMessages.collection.hasLinkedProducts, 409, {
+        code: errorCodes.collection.hasLinkedProducts,
+      });
     }
 
     await prisma.collection.delete({
       where: { id },
     });
 
-    return ok({ message: "Coleção removida com sucesso" });
+    return ok({ message: successMessages.collection.deleted });
   } catch {
-    return fail("Erro ao remover coleção", 500);
+    return fail(errorMessages.collection.deleteUnexpected, 500, {
+      code: errorCodes.collection.deleteUnexpected,
+    });
   }
 }
