@@ -62,7 +62,13 @@ export async function GET() {
                 slug: true,
                 name: true,
                 imageUrl: true,
-                category: true,
+                collection: {
+                  select: {
+                    id: true,
+                    name: true,
+                    slug: true,
+                  },
+                },
               },
             },
           },
@@ -117,14 +123,17 @@ export async function POST(request: NextRequest) {
     }
 
     const productPriceMap = new Map(
-      products.map((product) => [product.id, product.price]),
+      products.map((product: (typeof products)[number]) => [
+        product.id,
+        product.price,
+      ]),
     );
 
     let total = 0;
 
     const itemsToCreate = uniqueProductIds.map((productId) => {
       const quantity = itemMap.get(productId) ?? 0;
-      const price = productPriceMap.get(productId) ?? 0;
+      const price = Number(productPriceMap.get(productId) ?? 0);
 
       total += price * quantity;
 

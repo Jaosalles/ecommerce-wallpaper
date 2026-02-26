@@ -18,7 +18,7 @@ export const createProductSchema = z.object({
   description: z.string().min(10, "Descrição muito curta"),
   price: z.number().positive("Preço deve ser positivo"),
   imageUrl: z.string().min(1, "URL da imagem é obrigatória"),
-  category: z.string().min(2, "Categoria inválida"),
+  collectionId: z.string().min(1, "Coleção inválida"),
 });
 
 export const updateProductSchema = createProductSchema.partial();

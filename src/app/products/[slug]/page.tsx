@@ -15,6 +15,9 @@ export default async function ProductDetailsPage({
 
   const product = await prisma.product.findUnique({
     where: { slug },
+    include: {
+      collection: true,
+    },
   });
 
   if (!product) {
@@ -40,7 +43,7 @@ export default async function ProductDetailsPage({
 
         <div>
           <p className="site-muted text-xs uppercase tracking-[0.2em]">
-            {product.category}
+            {product.collection.name}
           </p>
           <h1 className="mt-2 text-3xl font-semibold">{product.name}</h1>
           <p className="site-muted mt-4 text-sm">{product.description}</p>

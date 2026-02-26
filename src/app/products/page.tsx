@@ -4,6 +4,9 @@ import Link from "next/link";
 
 export default async function ProductsPage() {
   const products = await prisma.product.findMany({
+    include: {
+      collection: true,
+    },
     orderBy: {
       createdAt: "desc",
     },
@@ -23,7 +26,7 @@ export default async function ProductsPage() {
       </header>
 
       <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {products.map((product) => (
+        {products.map((product: (typeof products)[number]) => (
           <article
             key={product.id}
             className="site-surface space-y-3 rounded-lg border site-border p-4"
@@ -41,7 +44,7 @@ export default async function ProductsPage() {
             <div className="space-y-2">
               <h2 className="text-lg font-semibold">{product.name}</h2>
               <p className="site-muted text-sm">{product.description}</p>
-              <p className="text-sm">Categoria: {product.category}</p>
+              <p className="text-sm">Coleção: {product.collection.name}</p>
               <p className="font-medium">
                 {product.price.toLocaleString("pt-BR", {
                   style: "currency",

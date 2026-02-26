@@ -4,7 +4,11 @@ export type CartItem = {
   name: string;
   price: number;
   imageUrl: string;
-  category: string;
+  collection: {
+    id: string;
+    name: string;
+    slug: string;
+  };
   quantity: number;
   subtotal: number;
 };

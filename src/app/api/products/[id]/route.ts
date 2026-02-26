@@ -12,7 +12,12 @@ export async function GET(_: NextRequest, { params }: Params) {
   try {
     const { id } = await params;
 
-    const product = await prisma.product.findUnique({ where: { id } });
+    const product = await prisma.product.findUnique({
+      where: { id },
+      include: {
+        collection: true,
+      },
+    });
 
     if (!product) {
       return fail("Produto não encontrado", 404);
@@ -46,6 +51,9 @@ export async function PUT(request: NextRequest, { params }: Params) {
     const product = await prisma.product.update({
       where: { id },
       data: parsed.data,
+      include: {
+        collection: true,
+      },
     });
 
     return ok(product);

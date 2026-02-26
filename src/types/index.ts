@@ -29,7 +29,8 @@ export type Product = {
   description: string;
   price: number;
   imageUrl: string;
-  category: string;
+  collectionId: string;
+  collection?: Collection;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -38,6 +39,15 @@ export type CreateProductInput = Omit<
   Product,
   "id" | "createdAt" | "updatedAt"
 >;
+
+export type Collection = {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  createdAt: Date;
+  updatedAt: Date;
+};
 
 // ============================================
 // ORDER TYPES

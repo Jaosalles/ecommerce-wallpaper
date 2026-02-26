@@ -58,11 +58,21 @@ async function buildCartResponse(items: CartCookieItem[]) {
       name: true,
       price: true,
       imageUrl: true,
-      category: true,
+      collection: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+        },
+      },
     },
   });
 
-  const productMap = new Map(products.map((product) => [product.id, product]));
+  type CartProduct = (typeof products)[number];
+
+  const productMap = new Map<string, CartProduct>(
+    products.map((product: CartProduct) => [product.id, product]),
+  );
 
   const responseItems = items
     .map((item) => {
@@ -77,7 +87,7 @@ async function buildCartResponse(items: CartCookieItem[]) {
         slug: product.slug,
         name: product.name,
         imageUrl: product.imageUrl,
-        category: product.category,
+        collection: product.collection,
         quantity: item.quantity,
         price: product.price,
         subtotal: product.price * item.quantity,

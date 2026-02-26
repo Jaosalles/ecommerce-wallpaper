@@ -7,17 +7,22 @@ import { NextRequest } from "next/server";
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const category = searchParams.get("category");
+    const collection = searchParams.get("collection");
 
     const products = await prisma.product.findMany({
-      where: category
+      where: collection
         ? {
-            category: {
-              equals: category,
-              mode: "insensitive",
+            collection: {
+              slug: {
+                equals: collection,
+                mode: "insensitive",
+              },
             },
           }
         : undefined,
+      include: {
+        collection: true,
+      },
       orderBy: { createdAt: "desc" },
     });
 
@@ -52,7 +57,12 @@ export async function POST(request: NextRequest) {
       return fail("Já existe um produto com este slug", 409);
     }
 
-    const product = await prisma.product.create({ data: parsed.data });
+    const product = await prisma.product.create({
+      data: parsed.data,
+      include: {
+        collection: true,
+      },
+    });
 
     return ok(product, 201);
   } catch {

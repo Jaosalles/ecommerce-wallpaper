@@ -9,6 +9,7 @@ async function main() {
   await prisma.orderItem.deleteMany();
   await prisma.order.deleteMany();
   await prisma.product.deleteMany();
+  await prisma.collection.deleteMany();
   await prisma.user.deleteMany();
 
   console.log("🗑️  Dados existentes removidos");
@@ -39,6 +40,57 @@ async function main() {
     user2: user2.email,
   });
 
+  // Criar coleções
+  const minimalistaCollection = await prisma.collection.create({
+    data: {
+      name: "Minimalista",
+      slug: "minimalista",
+      description: "Designs limpos e sofisticados para ambientes modernos",
+    },
+  });
+
+  const pastelCollection = await prisma.collection.create({
+    data: {
+      name: "Pastel",
+      slug: "pastel",
+      description: "Tons suaves e acolhedores para quartos e salas",
+    },
+  });
+
+  const darkCollection = await prisma.collection.create({
+    data: {
+      name: "Dark",
+      slug: "dark",
+      description: "Composições escuras e elegantes com visual premium",
+    },
+  });
+
+  const naturezaCollection = await prisma.collection.create({
+    data: {
+      name: "Natureza",
+      slug: "natureza",
+      description: "Elementos naturais para trazer frescor ao ambiente",
+    },
+  });
+
+  const abstratoCollection = await prisma.collection.create({
+    data: {
+      name: "Abstrato",
+      slug: "abstrato",
+      description: "Formas e cores marcantes para ambientes criativos",
+    },
+  });
+
+  const collections = [
+    minimalistaCollection,
+    pastelCollection,
+    darkCollection,
+    naturezaCollection,
+    abstratoCollection,
+  ];
+
+  console.log("🗂️  Coleções criadas:", collections.length);
+
   // Criar produtos
   const products = await Promise.all([
     prisma.product.create({
@@ -49,7 +101,7 @@ async function main() {
           "Design minimalista em tons de preto e cinza, perfeito para ambientes modernos",
         price: 19.9,
         imageUrl: "/uploads/minimalista-preto.jpg",
-        category: "Minimalista",
+        collectionId: minimalistaCollection.id,
       },
     }),
     prisma.product.create({
@@ -59,7 +111,7 @@ async function main() {
         description: "Tons suaves de rosa e bege, ideal para quartos e salas",
         price: 24.9,
         imageUrl: "/uploads/pastel-rosa.jpg",
-        category: "Pastel",
+        collectionId: pastelCollection.id,
       },
     }),
     prisma.product.create({
@@ -69,7 +121,7 @@ async function main() {
         description: "Papel de parede escuro com padrões abstratos",
         price: 29.9,
         imageUrl: "/uploads/dark-mode.jpg",
-        category: "Dark",
+        collectionId: darkCollection.id,
       },
     }),
     prisma.product.create({
@@ -79,7 +131,7 @@ async function main() {
         description: "Imagem de floresta com verde vibrante",
         price: 34.9,
         imageUrl: "/uploads/floresta.jpg",
-        category: "Natureza",
+        collectionId: naturezaCollection.id,
       },
     }),
     prisma.product.create({
@@ -89,7 +141,7 @@ async function main() {
         description: "Design abstrato com cores vibrantes e geométricas",
         price: 39.9,
         imageUrl: "/uploads/abstract-colorido.jpg",
-        category: "Abstrato",
+        collectionId: abstratoCollection.id,
       },
     }),
   ]);
@@ -144,6 +196,7 @@ async function main() {
   // Resumo
   console.log("\n📊 Resumo da seed:");
   console.log(`   - Usuários: 2`);
+  console.log(`   - Coleções: ${collections.length}`);
   console.log(`   - Produtos: ${products.length}`);
   console.log(`   - Pedidos: 1`);
   console.log(`   - Favoritos: 2`);
