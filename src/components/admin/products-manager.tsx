@@ -1,6 +1,8 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { ConfirmDeleteModal } from "@/components/admin/confirm-delete-modal";
+import { toast } from "sonner";
 
 type CollectionItem = {
   id: string;
@@ -39,10 +41,10 @@ export function AdminProductsManager() {
   const [collections, setCollections] = useState<CollectionItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(INITIAL_FORM);
+  const [deleteTarget, setDeleteTarget] = useState<ProductItem | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const isEditing = useMemo(() => Boolean(editingId), [editingId]);
 
@@ -87,13 +89,12 @@ export function AdminProductsManager() {
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      setError("");
       await Promise.all([loadCollections(), loadProducts()]);
     } catch (errorValue) {
       if (errorValue instanceof Error) {
-        setError(errorValue.message);
+        toast.error(errorValue.message);
       } else {
-        setError("Erro ao carregar dados");
+        toast.error("Erro ao carregar dados");
       }
     } finally {
       setLoading(false);
@@ -115,8 +116,6 @@ export function AdminProductsManager() {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSaving(true);
-    setError("");
-    setSuccess("");
 
     try {
       const endpoint = editingId
@@ -143,11 +142,11 @@ export function AdminProductsManager() {
       const payload = (await response.json()) as ApiResponse<ProductItem>;
 
       if (!response.ok || !payload.success) {
-        setError(payload.error ?? "Não foi possível salvar o produto");
+        toast.error(payload.error ?? "Não foi possível salvar o produto");
         return;
       }
 
-      setSuccess(
+      toast.success(
         editingId
           ? "Produto atualizado com sucesso"
           : "Produto criado com sucesso",
@@ -155,7 +154,7 @@ export function AdminProductsManager() {
       resetForm();
       await loadProducts();
     } catch {
-      setError("Erro de conexão ao salvar produto");
+      toast.error("Erro de conexão ao salvar produto");
     } finally {
       setSaving(false);
     }
@@ -171,13 +170,10 @@ export function AdminProductsManager() {
       imageUrl: item.imageUrl,
       collectionId: item.collectionId,
     });
-    setError("");
-    setSuccess("");
   }
 
   async function handleDelete(id: string) {
-    setError("");
-    setSuccess("");
+    setDeleting(true);
 
     try {
       const response = await fetch(`/api/products/${id}`, {
@@ -190,7 +186,7 @@ export function AdminProductsManager() {
       }>;
 
       if (!response.ok || !payload.success) {
-        setError(payload.error ?? "Não foi possível remover o produto");
+        toast.error(payload.error ?? "Não foi possível remover o produto");
         return;
       }
 
@@ -198,10 +194,13 @@ export function AdminProductsManager() {
         resetForm();
       }
 
-      setSuccess("Produto removido com sucesso");
+      toast.success("Produto removido com sucesso");
       await loadProducts();
+      setDeleteTarget(null);
     } catch {
-      setError("Erro de conexão ao remover produto");
+      toast.error("Erro de conexão ao remover produto");
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -349,11 +348,6 @@ export function AdminProductsManager() {
               </button>
             ) : null}
           </div>
-
-          {error ? <p className="text-sm text-red-600">{error}</p> : null}
-          {success ? (
-            <p className="text-sm text-emerald-600">{success}</p>
-          ) : null}
         </form>
       </article>
 
@@ -396,7 +390,7 @@ export function AdminProductsManager() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleDelete(item.id)}
+                  onClick={() => setDeleteTarget(item)}
                   className="site-btn-secondary rounded-md px-2 py-1 text-xs"
                 >
                   Excluir
@@ -406,6 +400,19 @@ export function AdminProductsManager() {
           ))}
         </ul>
       </article>
+
+      <ConfirmDeleteModal
+        open={Boolean(deleteTarget)}
+        title="Confirmar exclusão"
+        description={`Tem certeza que deseja excluir o produto \"${deleteTarget?.name ?? ""}\"?`}
+        loading={deleting}
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={() => {
+          if (deleteTarget) {
+            handleDelete(deleteTarget.id);
+          }
+        }}
+      />
     </section>
   );
 }

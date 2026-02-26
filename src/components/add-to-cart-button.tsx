@@ -2,13 +2,13 @@
 
 import { addItemToCart } from "@/lib/cart";
 import { useState } from "react";
+import { toast } from "sonner";
 
 type AddToCartButtonProps = {
   productId: string;
 };
 
 export function AddToCartButton({ productId }: AddToCartButtonProps) {
-  const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
   async function handleAddToCart() {
@@ -17,14 +17,11 @@ export function AddToCartButton({ productId }: AddToCartButtonProps) {
     try {
       await addItemToCart({ productId, quantity: 1 });
 
-      setMessage("Produto adicionado ao carrinho");
+      toast.success("Produto adicionado ao carrinho");
     } catch {
-      setMessage("Não foi possível adicionar no carrinho");
+      toast.error("Não foi possível adicionar no carrinho");
     } finally {
       setLoading(false);
-      setTimeout(() => {
-        setMessage("");
-      }, 2500);
     }
   }
 
@@ -38,12 +35,6 @@ export function AddToCartButton({ productId }: AddToCartButtonProps) {
       >
         {loading ? "Adicionando..." : "Adicionar ao carrinho"}
       </button>
-
-      {message ? (
-        <p className="text-sm text-emerald-600 dark:text-emerald-400">
-          {message}
-        </p>
-      ) : null}
     </div>
   );
 }

@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  buildPublicWhatsAppMessage,
   CartItem,
   clearCart,
   createOrder,
@@ -9,16 +8,16 @@ import {
   removeItemFromCart,
 } from "@/lib/cart";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-
-const WHATSAPP_NUMBER = "5517981635657";
+import { toast } from "sonner";
 
 export function CartView() {
+  const router = useRouter();
   const [items, setItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const [checkoutLoading, setCheckoutLoading] = useState(false);
-  const [checkoutError, setCheckoutError] = useState("");
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
 
   const total = useMemo(
     () => items.reduce((acc, item) => acc + item.price * item.quantity, 0),
@@ -29,10 +28,16 @@ export function CartView() {
     async function loadCart() {
       try {
         setLoading(true);
-        const cart = await getCart();
+        const [cart, authResponse] = await Promise.all([
+          getCart(),
+          fetch("/api/auth/me", { method: "GET", cache: "no-store" }),
+        ]);
+
         setItems(cart.items);
+        setIsAuthenticated(authResponse.ok);
       } catch {
-        setError("Não foi possível carregar o carrinho");
+        toast.error("Não foi possível carregar o carrinho");
+        setIsAuthenticated(false);
       } finally {
         setLoading(false);
       }
@@ -41,17 +46,13 @@ export function CartView() {
     loadCart();
   }, []);
 
-  const publicWhatsappUrl = useMemo(() => {
-    const message = buildPublicWhatsAppMessage(items, total);
-    return `https://wa.me/${WHATSAPP_NUMBER}?text=${message}`;
-  }, [items, total]);
-
   async function handleClearCart() {
     try {
       const cart = await clearCart();
       setItems(cart.items);
+      toast.success("Carrinho limpo com sucesso");
     } catch {
-      setError("Não foi possível limpar o carrinho");
+      toast.error("Não foi possível limpar o carrinho");
     }
   }
 
@@ -59,15 +60,21 @@ export function CartView() {
     try {
       const cart = await removeItemFromCart(productId);
       setItems(cart.items);
+      toast.success("Item removido do carrinho");
     } catch {
-      setError("Não foi possível remover o item");
+      toast.error("Não foi possível remover o item");
     }
   }
 
   async function handleCheckout() {
+    if (!isAuthenticated) {
+      toast.error("Faça login para finalizar no WhatsApp.");
+      router.push("/login?redirect=/cart");
+      return;
+    }
+
     try {
       setCheckoutLoading(true);
-      setCheckoutError("");
 
       const orderResponse = await createOrder({
         items: items.map((item) => ({
@@ -84,15 +91,17 @@ export function CartView() {
 
       const nextCart = await clearCart();
       setItems(nextCart.items);
+      toast.success("Pedido enviado para o WhatsApp com sucesso");
     } catch (errorValue) {
       if (
         errorValue instanceof Error &&
         errorValue.message === "Não autenticado"
       ) {
-        window.open(publicWhatsappUrl, "_blank", "noopener,noreferrer");
-        setCheckoutError("Faça login para registrar o pedido automaticamente.");
+        setIsAuthenticated(false);
+        toast.error("Faça login para finalizar no WhatsApp.");
+        router.push("/login?redirect=/cart");
       } else {
-        setCheckoutError("Não foi possível finalizar o pedido");
+        toast.error("Não foi possível finalizar o pedido");
       }
     } finally {
       setCheckoutLoading(false);
@@ -123,12 +132,6 @@ export function CartView() {
 
   return (
     <div className="space-y-4">
-      {error ? (
-        <div className="rounded-md border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error}
-        </div>
-      ) : null}
-
       <div className="site-surface space-y-3 rounded-lg border site-border p-6">
         {items.map((item) => (
           <div
@@ -171,31 +174,34 @@ export function CartView() {
           <button
             type="button"
             onClick={handleCheckout}
-            disabled={checkoutLoading}
+            disabled={checkoutLoading || !isAuthenticated}
             className="site-btn rounded-md px-4 py-2 text-sm font-medium"
           >
-            {checkoutLoading ? "Finalizando..." : "Finalizar no WhatsApp"}
+            {checkoutLoading
+              ? "Finalizando..."
+              : isAuthenticated
+                ? "Finalizar no WhatsApp"
+                : "Faça login para finalizar"}
           </button>
 
-          <Link
-            href="/login"
-            className="site-btn-secondary rounded-md px-4 py-2 text-sm font-medium"
-          >
-            Entrar para registrar pedido
-          </Link>
+          {!isAuthenticated ? (
+            <Link
+              href="/login?redirect=/cart"
+              className="site-btn-secondary rounded-md px-4 py-2 text-sm font-medium"
+            >
+              Entrar para finalizar no WhatsApp
+            </Link>
+          ) : null}
 
           <button
             type="button"
             onClick={handleClearCart}
+            disabled={checkoutLoading}
             className="site-btn-secondary rounded-md px-4 py-2 text-sm font-medium"
           >
             Limpar carrinho
           </button>
         </div>
-
-        {checkoutError ? (
-          <p className="mt-3 text-sm text-amber-700">{checkoutError}</p>
-        ) : null}
       </div>
     </div>
   );
