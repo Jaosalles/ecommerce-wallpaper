@@ -176,19 +176,20 @@ async function main() {
   console.log("📋 Pedido criado:", { id: order.id, status: order.status });
 
   // Criar favoritos
-  const favorite1 = await prisma.favorite.create({
-    data: {
-      userId: user1.id,
-      productId: products[2].id,
-    },
-  });
-
-  const favorite2 = await prisma.favorite.create({
-    data: {
-      userId: user1.id,
-      productId: products[3].id,
-    },
-  });
+  await Promise.all([
+    prisma.favorite.create({
+      data: {
+        userId: user1.id,
+        productId: products[2].id,
+      },
+    }),
+    prisma.favorite.create({
+      data: {
+        userId: user1.id,
+        productId: products[3].id,
+      },
+    }),
+  ]);
 
   console.log("❤️  Favoritos criados:", 2);
 
