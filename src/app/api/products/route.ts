@@ -4,31 +4,73 @@ import { authz } from "@/lib/authz/facade";
 import { errorCodes, errorMessages } from "@/lib/error-messages";
 import { prisma } from "@/lib/prisma";
 import { createProductSchema } from "@/lib/validators";
+import { PaginatedResponse } from "@/types";
 import { NextRequest } from "next/server";
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const collection = searchParams.get("collection");
+    const pageParam = searchParams.get("page");
+    const pageSizeParam = searchParams.get("pageSize");
+
+    const parsedPage = Number(pageParam ?? "1");
+    const parsedPageSize = Number(pageSizeParam ?? "10");
+    const shouldPaginate = pageParam !== null || pageSizeParam !== null;
+
+    const page = Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : 1;
+    const pageSize =
+      Number.isFinite(parsedPageSize) && parsedPageSize > 0
+        ? parsedPageSize
+        : 10;
+
+    const where = collection
+      ? {
+          collection: {
+            slug: {
+              equals: collection,
+              mode: "insensitive" as const,
+            },
+          },
+        }
+      : undefined;
+
+    if (!shouldPaginate) {
+      const products = await prisma.product.findMany({
+        where,
+        include: {
+          collection: true,
+        },
+        orderBy: { createdAt: "desc" },
+      });
+
+      return ok(products);
+    }
+
+    const total = await prisma.product.count({ where });
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    const normalizedPage = Math.min(page, totalPages);
+    const skip = (normalizedPage - 1) * pageSize;
 
     const products = await prisma.product.findMany({
-      where: collection
-        ? {
-            collection: {
-              slug: {
-                equals: collection,
-                mode: "insensitive",
-              },
-            },
-          }
-        : undefined,
+      where,
       include: {
         collection: true,
       },
       orderBy: { createdAt: "desc" },
+      skip,
+      take: pageSize,
     });
 
-    return ok(products);
+    const payload: PaginatedResponse<(typeof products)[number]> = {
+      data: products,
+      total,
+      page: normalizedPage,
+      pageSize,
+      totalPages,
+    };
+
+    return ok(payload);
   } catch {
     return fail(errorMessages.product.fetchManyUnexpected, 500, {
       code: errorCodes.product.fetchManyUnexpected,

@@ -1,8 +1,27 @@
 import { prisma } from "@/lib/prisma";
-import Image from "next/image";
-import Link from "next/link";
+import { PaginationQueryControls } from "@/components/pagination-query-controls";
+import { ProductsCatalogGrid } from "@/components/products-catalog-grid";
 
-export default async function ProductsPage() {
+const PRODUCTS_PAGE_SIZE = 5;
+
+type ProductsPageProps = {
+  searchParams: Promise<{
+    page?: string;
+  }>;
+};
+
+export default async function ProductsPage({
+  searchParams,
+}: ProductsPageProps) {
+  const { page: pageParam } = await searchParams;
+  const parsedPage = Number(pageParam ?? "1");
+  const page = Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : 1;
+
+  const total = await prisma.product.count();
+  const totalPages = Math.max(1, Math.ceil(total / PRODUCTS_PAGE_SIZE));
+  const normalizedPage = Math.min(page, totalPages);
+  const skip = (normalizedPage - 1) * PRODUCTS_PAGE_SIZE;
+
   const products = await prisma.product.findMany({
     include: {
       collection: true,
@@ -10,6 +29,8 @@ export default async function ProductsPage() {
     orderBy: {
       createdAt: "desc",
     },
+    skip,
+    take: PRODUCTS_PAGE_SIZE,
   });
 
   return (
@@ -25,43 +46,15 @@ export default async function ProductsPage() {
         </p>
       </header>
 
-      <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {products.map((product: (typeof products)[number]) => (
-          <article
-            key={product.id}
-            className="site-surface space-y-3 rounded-lg border site-border p-4"
-          >
-            <div className="site-surface-soft h-48 overflow-hidden rounded-md border site-border">
-              <Image
-                src={product.imageUrl}
-                alt={product.name}
-                width={640}
-                height={480}
-                className="h-full w-full object-cover"
-              />
-            </div>
+      <ProductsCatalogGrid products={products} />
 
-            <div className="space-y-2">
-              <h2 className="text-lg font-semibold">{product.name}</h2>
-              <p className="site-muted text-sm">{product.description}</p>
-              <p className="text-sm">Coleção: {product.collection.name}</p>
-              <p className="font-medium">
-                {product.price.toLocaleString("pt-BR", {
-                  style: "currency",
-                  currency: "BRL",
-                })}
-              </p>
-            </div>
-
-            <Link
-              href={`/products/${product.slug}`}
-              className="site-btn mt-4 inline-flex rounded-md px-3 py-2 text-sm font-medium"
-            >
-              Ver detalhes
-            </Link>
-          </article>
-        ))}
-      </section>
+      <PaginationQueryControls
+        page={normalizedPage}
+        totalPages={totalPages}
+        buildHref={(nextPage) =>
+          nextPage <= 1 ? "/products" : `/products?page=${nextPage}`
+        }
+      />
     </main>
   );
 }

@@ -83,3 +83,30 @@ button:not(:disabled) {
   border: 1px solid var(--border);
   color: var(--foreground);
 }
+
+.catalog-fade-in {
+  opacity: 1;
+}
+
+.catalog-fade-out {
+  opacity: 0;
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 220ms;
+  animation-timing-function: ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .catalog-fade-in,
+  .catalog-fade-out {
+    opacity: 1;
+    transition: none;
+  }
+
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: 1ms;
+  }
+}

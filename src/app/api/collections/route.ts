@@ -4,10 +4,47 @@ import { authz } from "@/lib/authz/facade";
 import { errorCodes, errorMessages } from "@/lib/error-messages";
 import { prisma } from "@/lib/prisma";
 import { createCollectionSchema } from "@/lib/validators";
+import { PaginatedResponse } from "@/types";
 import { NextRequest } from "next/server";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url);
+    const pageParam = searchParams.get("page");
+    const pageSizeParam = searchParams.get("pageSize");
+
+    const parsedPage = Number(pageParam ?? "1");
+    const parsedPageSize = Number(pageSizeParam ?? "10");
+    const shouldPaginate = pageParam !== null || pageSizeParam !== null;
+
+    const page = Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : 1;
+    const pageSize =
+      Number.isFinite(parsedPageSize) && parsedPageSize > 0
+        ? parsedPageSize
+        : 10;
+
+    if (!shouldPaginate) {
+      const collections = await prisma.collection.findMany({
+        include: {
+          _count: {
+            select: {
+              products: true,
+            },
+          },
+        },
+        orderBy: {
+          name: "asc",
+        },
+      });
+
+      return ok(collections);
+    }
+
+    const total = await prisma.collection.count();
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    const normalizedPage = Math.min(page, totalPages);
+    const skip = (normalizedPage - 1) * pageSize;
+
     const collections = await prisma.collection.findMany({
       include: {
         _count: {
@@ -19,9 +56,19 @@ export async function GET() {
       orderBy: {
         name: "asc",
       },
+      skip,
+      take: pageSize,
     });
 
-    return ok(collections);
+    const payload: PaginatedResponse<(typeof collections)[number]> = {
+      data: collections,
+      total,
+      page: normalizedPage,
+      pageSize,
+      totalPages,
+    };
+
+    return ok(payload);
   } catch {
     return fail(errorMessages.collection.fetchManyUnexpected, 500, {
       code: errorCodes.collection.fetchManyUnexpected,

@@ -1,5 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import { AddToCartButton } from "@/components/add-to-cart-button";
+import { ProductsBackLink } from "@/components/products-back-link";
+import {
+  getProductImageTransitionName,
+  getProductTitleTransitionName,
+} from "@/lib/view-transition";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -26,12 +31,15 @@ export default async function ProductDetailsPage({
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-6 py-10">
-      <Link href="/products" className="text-sm underline">
-        ← Voltar ao catálogo
-      </Link>
+      <ProductsBackLink />
 
       <article className="site-surface grid gap-6 rounded-lg border site-border p-6 md:grid-cols-2">
-        <div className="site-surface-soft overflow-hidden rounded-md border site-border">
+        <div
+          className="site-surface-soft overflow-hidden rounded-md border site-border"
+          style={{
+            viewTransitionName: getProductImageTransitionName(product.slug),
+          }}
+        >
           <Image
             src={product.imageUrl}
             alt={product.name}
@@ -45,7 +53,14 @@ export default async function ProductDetailsPage({
           <p className="site-muted text-xs uppercase tracking-[0.2em]">
             {product.collection.name}
           </p>
-          <h1 className="mt-2 text-3xl font-semibold">{product.name}</h1>
+          <h1
+            className="mt-2 text-3xl font-semibold"
+            style={{
+              viewTransitionName: getProductTitleTransitionName(product.slug),
+            }}
+          >
+            {product.name}
+          </h1>
           <p className="site-muted mt-4 text-sm">{product.description}</p>
 
           <p className="mt-6 text-2xl font-semibold">
