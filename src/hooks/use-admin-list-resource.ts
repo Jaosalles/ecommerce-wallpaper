@@ -1,11 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
-
-type ApiResponse<T> = {
-  success: boolean;
-  data?: T;
-  error?: string;
-};
+import { apiFetch, parseApiResponse } from "@/lib/client-api";
 
 type UseAdminListResourceParams<TData> = {
   endpoint: string;
@@ -24,34 +19,43 @@ export function useAdminListResource<TData>({
 }: UseAdminListResourceParams<TData>) {
   const [data, setData] = useState<TData>(initialData);
   const [loading, setLoading] = useState(autoLoad);
+  const [isTransitionPending, startTransition] = useTransition();
+  const onLoadedRef = useRef(onLoaded);
+
+  useEffect(() => {
+    onLoadedRef.current = onLoaded;
+  }, [onLoaded]);
 
   const reload = useCallback(async () => {
     try {
       setLoading(true);
 
-      const response = await fetch(endpoint, {
+      const response = await apiFetch(endpoint, {
         method: "GET",
-        credentials: "include",
       });
 
-      const payload = (await response.json()) as ApiResponse<TData>;
+      const data = await parseApiResponse<TData>(response, {
+        fallbackErrorMessage: loadErrorMessage,
+      });
 
-      if (!response.ok || !payload.success || payload.data === undefined) {
-        toast.error(payload.error ?? loadErrorMessage);
+      startTransition(() => {
+        setData(data);
+      });
+
+      if (onLoadedRef.current) {
+        await onLoadedRef.current(data);
+      }
+    } catch (errorValue) {
+      if (errorValue instanceof Error) {
+        toast.error(errorValue.message);
         return;
       }
 
-      setData(payload.data);
-
-      if (onLoaded) {
-        await onLoaded(payload.data);
-      }
-    } catch {
       toast.error(loadErrorMessage);
     } finally {
       setLoading(false);
     }
-  }, [endpoint, loadErrorMessage, onLoaded]);
+  }, [endpoint, loadErrorMessage]);
 
   useEffect(() => {
     if (!autoLoad) {
@@ -65,6 +69,7 @@ export function useAdminListResource<TData>({
     data,
     setData,
     loading,
+    isTransitionPending,
     reload,
   };
 }

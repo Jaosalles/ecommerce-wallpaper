@@ -18,8 +18,12 @@ export function AddToCartButton({ productId }: AddToCartButtonProps) {
       await addItemToCart({ productId, quantity: 1 });
 
       toast.success("Produto adicionado ao carrinho");
-    } catch {
-      toast.error("Não foi possível adicionar no carrinho");
+    } catch (errorValue) {
+      if (errorValue instanceof Error) {
+        toast.error(errorValue.message);
+      } else {
+        toast.error("Não foi possível adicionar no carrinho");
+      }
     } finally {
       setLoading(false);
     }

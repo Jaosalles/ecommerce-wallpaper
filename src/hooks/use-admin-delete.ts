@@ -1,11 +1,6 @@
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
-
-type ApiResponse<T> = {
-  success: boolean;
-  data?: T;
-  error?: string;
-};
+import { apiFetch, parseApiResponse } from "@/lib/client-api";
 
 type UseAdminDeleteParams = {
   buildEndpoint: (id: string) => string;
@@ -39,19 +34,14 @@ export function useAdminDelete<TItem extends { id: string }>({
     setDeleting(true);
 
     try {
-      const response = await fetch(buildEndpoint(deleteTarget.id), {
+      const response = await apiFetch(buildEndpoint(deleteTarget.id), {
         method: "DELETE",
-        credentials: "include",
       });
 
-      const payload = (await response.json()) as ApiResponse<{
-        message: string;
-      }>;
-
-      if (!response.ok || !payload.success) {
-        toast.error(payload.error ?? fallbackErrorMessage);
-        return;
-      }
+      await parseApiResponse<{ message: string }>(response, {
+        fallbackErrorMessage,
+        allowEmptyData: true,
+      });
 
       toast.success(successMessage);
 
@@ -60,8 +50,12 @@ export function useAdminDelete<TItem extends { id: string }>({
       }
 
       setDeleteTarget(null);
-    } catch {
-      toast.error(fallbackErrorMessage);
+    } catch (errorValue) {
+      if (errorValue instanceof Error) {
+        toast.error(errorValue.message);
+      } else {
+        toast.error(fallbackErrorMessage);
+      }
     } finally {
       setDeleting(false);
     }

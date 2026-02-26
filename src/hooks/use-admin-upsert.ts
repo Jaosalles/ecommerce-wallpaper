@@ -1,11 +1,6 @@
 import { useCallback } from "react";
 import { toast } from "sonner";
-
-type ApiResponse<T> = {
-  success: boolean;
-  data?: T;
-  error?: string;
-};
+import { apiFetch, parseApiResponse } from "@/lib/client-api";
 
 type UseAdminUpsertParams<TFormData> = {
   editingId: string | null;
@@ -36,21 +31,18 @@ export function useAdminUpsert<TFormData, TResponseData>({
         const endpoint = editingId ? updateEndpoint(editingId) : createEndpoint;
         const method = editingId ? "PUT" : "POST";
 
-        const response = await fetch(endpoint, {
+        const response = await apiFetch(endpoint, {
           method,
-          credentials: "include",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify(mapBody(values)),
         });
 
-        const payload = (await response.json()) as ApiResponse<TResponseData>;
-
-        if (!response.ok || !payload.success) {
-          toast.error(payload.error ?? fallbackErrorMessage);
-          return false;
-        }
+        await parseApiResponse<TResponseData>(response, {
+          fallbackErrorMessage,
+          allowEmptyData: true,
+        });
 
         toast.success(editingId ? updateSuccessMessage : createSuccessMessage);
 
@@ -59,7 +51,12 @@ export function useAdminUpsert<TFormData, TResponseData>({
         }
 
         return true;
-      } catch {
+      } catch (errorValue) {
+        if (errorValue instanceof Error) {
+          toast.error(errorValue.message);
+          return false;
+        }
+
         toast.error(connectionErrorMessage);
         return false;
       }

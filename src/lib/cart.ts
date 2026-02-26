@@ -1,3 +1,5 @@
+import { apiFetch, parseApiResponse } from "@/lib/client-api";
+
 export type CartItem = {
   productId: string;
   slug: string;
@@ -31,35 +33,17 @@ export type OrderCheckoutInput = {
   }>;
 };
 
-type ApiResponse<T> = {
-  success: boolean;
-  data?: T;
-  error?: string;
-};
-
-async function parseApiResponse<T>(response: Response): Promise<T> {
-  const payload = (await response.json()) as ApiResponse<T>;
-
-  if (!response.ok || !payload.success || !payload.data) {
-    throw new Error(payload.error ?? "Erro na requisição");
-  }
-
-  return payload.data;
-}
-
 export async function getCart(): Promise<CartData> {
-  const response = await fetch("/api/cart", {
+  const response = await apiFetch("/api/cart", {
     method: "GET",
-    credentials: "include",
   });
 
   return parseApiResponse<CartData>(response);
 }
 
 export async function addItemToCart(input: CartAddInput): Promise<CartData> {
-  const response = await fetch("/api/cart", {
+  const response = await apiFetch("/api/cart", {
     method: "POST",
-    credentials: "include",
     headers: {
       "Content-Type": "application/json",
     },
@@ -73,11 +57,10 @@ export async function addItemToCart(input: CartAddInput): Promise<CartData> {
 }
 
 export async function removeItemFromCart(productId: string): Promise<CartData> {
-  const response = await fetch(
+  const response = await apiFetch(
     `/api/cart?productId=${encodeURIComponent(productId)}`,
     {
       method: "DELETE",
-      credentials: "include",
     },
   );
 
@@ -85,9 +68,8 @@ export async function removeItemFromCart(productId: string): Promise<CartData> {
 }
 
 export async function clearCart(): Promise<CartData> {
-  const response = await fetch("/api/cart", {
+  const response = await apiFetch("/api/cart", {
     method: "DELETE",
-    credentials: "include",
   });
 
   return parseApiResponse<CartData>(response);
@@ -101,9 +83,8 @@ export async function createOrder(input: OrderCheckoutInput): Promise<{
   };
   whatsappCheckoutUrl: string;
 }> {
-  const response = await fetch("/api/orders", {
+  const response = await apiFetch("/api/orders", {
     method: "POST",
-    credentials: "include",
     headers: {
       "Content-Type": "application/json",
     },
