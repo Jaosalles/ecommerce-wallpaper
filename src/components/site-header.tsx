@@ -1,58 +1,10 @@
 "use client";
 
+import { SiteHeaderNav, useSiteHeaderVisibility } from "./site-header/index";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
-
-import { LoginLink } from "@/components/login-link";
 
 export function SiteHeader() {
-  const pathname = usePathname();
-  const isAdminLoginPath = pathname === "/admin-login";
-  const isAdminPanelPath =
-    pathname === "/admin" || pathname.startsWith("/admin/");
-  const [hideHeader, setHideHeader] = useState(false);
-
-  useEffect(() => {
-    let active = true;
-
-    async function checkAuthForAdmin() {
-      if (isAdminLoginPath) {
-        setHideHeader(true);
-        return;
-      }
-
-      if (!isAdminPanelPath) {
-        setHideHeader(false);
-        return;
-      }
-
-      try {
-        const response = await fetch("/api/auth/me", {
-          method: "GET",
-          cache: "no-store",
-        });
-
-        if (!active) {
-          return;
-        }
-
-        setHideHeader(response.ok);
-      } catch {
-        if (!active) {
-          return;
-        }
-
-        setHideHeader(false);
-      }
-    }
-
-    checkAuthForAdmin();
-
-    return () => {
-      active = false;
-    };
-  }, [isAdminLoginPath, isAdminPanelPath]);
+  const { hideHeader } = useSiteHeaderVisibility();
 
   if (hideHeader) {
     return null;
@@ -75,21 +27,7 @@ export function SiteHeader() {
             Wallpaper Store
           </Link>
 
-          <nav className="flex items-center gap-4 text-sm">
-            <Link href="/" className="hover:underline">
-              Home
-            </Link>
-            <Link href="/products" className="hover:underline">
-              Produtos
-            </Link>
-            <Link href="/cart" className="hover:underline">
-              Carrinho
-            </Link>
-            <LoginLink />
-            <Link href="/#sobre" className="hover:underline">
-              Sobre
-            </Link>
-          </nav>
+          <SiteHeaderNav />
         </div>
       </div>
     </header>
