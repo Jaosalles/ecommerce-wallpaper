@@ -24,6 +24,12 @@ export default function Home() {
               Ver coleção
             </Link>
             <Link
+              href="/login?redirect=/"
+              className="site-btn-secondary rounded-md px-4 py-2 text-sm font-medium"
+            >
+              Entrar
+            </Link>
+            <Link
               href="/cart"
               className="site-btn-secondary rounded-md px-4 py-2 text-sm font-medium"
             >
