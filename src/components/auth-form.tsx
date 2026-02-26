@@ -2,39 +2,19 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
+import { useTransition } from "react";
 import { useForm } from "react-hook-form";
+import { AuthFields } from "@/components/auth-form/index";
+import {
+  AuthFormData,
+  AuthFormProps,
+  AuthSuccessPayload,
+  LoginFormData,
+  normalizeRedirectPath,
+} from "@/components/auth-form/index";
 import { toast } from "sonner";
+import { apiFetch, parseApiResponse } from "@/lib/client-api";
 import { loginSchema, registerSchema } from "@/lib/validators";
-import { z } from "zod";
-
-type AuthFormMode = "login" | "register";
-
-type AuthFormProps = {
-  mode: AuthFormMode;
-  redirectTo?: string;
-  fallbackRedirectTo?: string;
-  requiredRole?: "ADMIN" | "CUSTOMER";
-};
-
-type LoginFormData = z.infer<typeof loginSchema>;
-type RegisterFormData = z.infer<typeof registerSchema>;
-type AuthSuccessPayload = {
-  user?: {
-    role?: "CUSTOMER" | "ADMIN";
-  };
-};
-
-function normalizeRedirectPath(redirectTo?: string) {
-  if (
-    !redirectTo ||
-    !redirectTo.startsWith("/") ||
-    redirectTo.startsWith("//")
-  ) {
-    return "/products";
-  }
-
-  return redirectTo;
-}
 
 export function AuthForm({
   mode,
@@ -44,6 +24,7 @@ export function AuthForm({
 }: AuthFormProps) {
   const isLogin = mode === "login";
   const router = useRouter();
+  const [isNavigating, startNavigationTransition] = useTransition();
   const loginRedirectPath = normalizeRedirectPath(redirectTo);
   const loginFallbackPath = normalizeRedirectPath(fallbackRedirectTo);
 
@@ -51,7 +32,7 @@ export function AuthForm({
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<LoginFormData | RegisterFormData>({
+  } = useForm<AuthFormData>({
     resolver: zodResolver(isLogin ? loginSchema : registerSchema),
     defaultValues: isLogin
       ? {
@@ -66,7 +47,7 @@ export function AuthForm({
         },
   });
 
-  async function onSubmit(values: LoginFormData | RegisterFormData) {
+  async function onSubmit(values: AuthFormData) {
     const payload = isLogin
       ? {
           email: values.email,
@@ -75,14 +56,14 @@ export function AuthForm({
       : {
           email: values.email,
           password: values.password,
-          name: (values as RegisterFormData).name,
-          phone: (values as RegisterFormData).phone || undefined,
+          name: values.name ?? "",
+          phone: values.phone || undefined,
         };
 
     try {
       const endpoint = isLogin ? "/api/auth/login" : "/api/auth/register";
 
-      const response = await fetch(endpoint, {
+      const response = await apiFetch(endpoint, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -90,41 +71,39 @@ export function AuthForm({
         body: JSON.stringify(payload),
       });
 
-      const data = (await response.json()) as {
-        success: boolean;
-        error?: string;
-        data?: AuthSuccessPayload;
-        message?: string;
-        code?: string;
-      };
+      const data = await parseApiResponse<AuthSuccessPayload>(response, {
+        fallbackErrorMessage: "Não foi possível concluir a autenticação",
+      });
 
-      const userPayload = data.data?.user;
-
-      if (!response.ok || !data.success) {
-        toast.error(data.error ?? "Não foi possível concluir a autenticação");
-        return;
-      }
+      const userPayload = data.user;
 
       toast.success(
         isLogin ? "Login realizado com sucesso" : "Conta criada com sucesso",
       );
 
       setTimeout(() => {
-        if (isLogin) {
-          const role = userPayload?.role;
+        startNavigationTransition(() => {
+          if (isLogin) {
+            const role = userPayload?.role;
 
-          if (requiredRole && role !== requiredRole) {
-            router.push(loginFallbackPath);
+            if (requiredRole && role !== requiredRole) {
+              router.push(loginFallbackPath);
+            } else {
+              router.push(loginRedirectPath);
+            }
           } else {
-            router.push(loginRedirectPath);
+            router.push("/products");
           }
-        } else {
-          router.push("/products");
-        }
 
-        router.refresh();
+          router.refresh();
+        });
       }, 700);
-    } catch {
+    } catch (errorValue) {
+      if (errorValue instanceof Error) {
+        toast.error(errorValue.message);
+        return;
+      }
+
       toast.error("Erro de conexão. Tente novamente.");
     }
   }
@@ -138,66 +117,20 @@ export function AuthForm({
         {isLogin ? "Entrar na conta" : "Criar conta"}
       </h1>
 
-      {!isLogin ? (
-        <>
-          <label className="text-sm font-medium" htmlFor="name">
-            Nome
-          </label>
-          <input
-            id="name"
-            {...register("name" as const)}
-            className="site-input rounded-md px-3 py-2 text-sm outline-none"
-          />
-          {errors.name ? (
-            <p className="text-sm text-red-500">{errors.name.message}</p>
-          ) : null}
-
-          <label className="text-sm font-medium" htmlFor="phone">
-            Telefone (opcional)
-          </label>
-          <input
-            id="phone"
-            {...register("phone" as const)}
-            className="site-input rounded-md px-3 py-2 text-sm outline-none"
-          />
-          {errors.phone ? (
-            <p className="text-sm text-red-500">{errors.phone.message}</p>
-          ) : null}
-        </>
-      ) : null}
-
-      <label className="text-sm font-medium" htmlFor="email">
-        Email
-      </label>
-      <input
-        id="email"
-        type="email"
-        {...register("email")}
-        className="site-input rounded-md px-3 py-2 text-sm outline-none"
-      />
-      {errors.email ? (
-        <p className="text-sm text-red-500">{errors.email.message}</p>
-      ) : null}
-
-      <label className="text-sm font-medium" htmlFor="password">
-        Senha
-      </label>
-      <input
-        id="password"
-        type="password"
-        {...register("password")}
-        className="site-input rounded-md px-3 py-2 text-sm outline-none"
-      />
-      {errors.password ? (
-        <p className="text-sm text-red-500">{errors.password.message}</p>
-      ) : null}
+      <AuthFields isLogin={isLogin} register={register} errors={errors} />
 
       <button
         type="submit"
-        disabled={isSubmitting}
+        disabled={isSubmitting || isNavigating}
         className="site-btn mt-2 rounded-md px-4 py-2 text-sm font-medium disabled:opacity-60"
       >
-        {isSubmitting ? "Enviando..." : isLogin ? "Entrar" : "Criar conta"}
+        {isSubmitting
+          ? "Enviando..."
+          : isNavigating
+            ? "Redirecionando..."
+            : isLogin
+              ? "Entrar"
+              : "Criar conta"}
       </button>
     </form>
   );
