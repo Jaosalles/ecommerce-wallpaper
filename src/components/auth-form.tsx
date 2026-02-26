@@ -2,29 +2,48 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 type AuthFormMode = "login" | "register";
 
 type AuthFormProps = {
   mode: AuthFormMode;
+  redirectTo?: string;
+  fallbackRedirectTo?: string;
+  requiredRole?: "ADMIN" | "CUSTOMER";
 };
 
-export function AuthForm({ mode }: AuthFormProps) {
+function normalizeRedirectPath(redirectTo?: string) {
+  if (
+    !redirectTo ||
+    !redirectTo.startsWith("/") ||
+    redirectTo.startsWith("//")
+  ) {
+    return "/products";
+  }
+
+  return redirectTo;
+}
+
+export function AuthForm({
+  mode,
+  redirectTo,
+  fallbackRedirectTo,
+  requiredRole,
+}: AuthFormProps) {
   const isLogin = mode === "login";
   const router = useRouter();
+  const loginRedirectPath = normalizeRedirectPath(redirectTo);
+  const loginFallbackPath = normalizeRedirectPath(fallbackRedirectTo);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setError("");
-    setSuccess("");
     setLoading(true);
 
     try {
@@ -45,23 +64,37 @@ export function AuthForm({ mode }: AuthFormProps) {
       const data = (await response.json()) as {
         success: boolean;
         error?: string;
+        user?: {
+          role?: "CUSTOMER" | "ADMIN";
+        };
       };
 
       if (!response.ok || !data.success) {
-        setError(data.error ?? "Não foi possível concluir a autenticação");
+        toast.error(data.error ?? "Não foi possível concluir a autenticação");
         return;
       }
 
-      setSuccess(
+      toast.success(
         isLogin ? "Login realizado com sucesso" : "Conta criada com sucesso",
       );
 
       setTimeout(() => {
-        router.push("/products");
+        if (isLogin) {
+          const role = data.user?.role;
+
+          if (requiredRole && role !== requiredRole) {
+            router.push(loginFallbackPath);
+          } else {
+            router.push(loginRedirectPath);
+          }
+        } else {
+          router.push("/products");
+        }
+
         router.refresh();
       }, 700);
     } catch {
-      setError("Erro de conexão. Tente novamente.");
+      toast.error("Erro de conexão. Tente novamente.");
     } finally {
       setLoading(false);
     }
@@ -132,15 +165,6 @@ export function AuthForm({ mode }: AuthFormProps) {
       >
         {loading ? "Enviando..." : isLogin ? "Entrar" : "Criar conta"}
       </button>
-
-      {error ? (
-        <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-      ) : null}
-      {success ? (
-        <p className="text-sm text-emerald-600 dark:text-emerald-400">
-          {success}
-        </p>
-      ) : null}
     </form>
   );
 }

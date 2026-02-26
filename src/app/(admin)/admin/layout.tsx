@@ -1,8 +1,31 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 
 import { getAuthenticatedUserFromCookie } from "@/lib/auth";
 import { authz } from "@/lib/authz/facade";
+import { AdminLogoutButton } from "@/components/admin/logout-button";
+
+function normalizeRedirectPath(pathname: string | null | undefined) {
+  if (!pathname || !pathname.startsWith("/") || pathname.startsWith("//")) {
+    return "/products";
+  }
+
+  return pathname;
+}
+
+function getPathFromReferer(referer: string | null) {
+  if (!referer) {
+    return null;
+  }
+
+  try {
+    const url = new URL(referer);
+    return `${url.pathname}${url.search}`;
+  } catch {
+    return null;
+  }
+}
 
 export default async function AdminLayout({
   children,
@@ -10,13 +33,22 @@ export default async function AdminLayout({
   children: React.ReactNode;
 }) {
   const user = await getAuthenticatedUserFromCookie();
+  const requestHeaders = await headers();
+  const returnToPath = normalizeRedirectPath(
+    getPathFromReferer(requestHeaders.get("referer")),
+  );
+
+  if (!user) {
+    const params = new URLSearchParams({
+      redirect: "/admin",
+      returnTo: returnToPath,
+    });
+
+    redirect(`/admin-login?${params.toString()}`);
+  }
 
   if (!authz.can(user, "product:create")) {
-    if (!user) {
-      redirect("/login");
-    }
-
-    redirect("/products");
+    redirect(returnToPath);
   }
 
   return (
@@ -49,6 +81,7 @@ export default async function AdminLayout({
             >
               Coleções
             </Link>
+            <AdminLogoutButton />
           </nav>
         </div>
       </header>
