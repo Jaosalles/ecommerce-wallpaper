@@ -1,8 +1,11 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
 import { toast } from "sonner";
+import { loginSchema, registerSchema } from "@/lib/validators";
+import { z } from "zod";
 
 type AuthFormMode = "login" | "register";
 
@@ -11,6 +14,14 @@ type AuthFormProps = {
   redirectTo?: string;
   fallbackRedirectTo?: string;
   requiredRole?: "ADMIN" | "CUSTOMER";
+};
+
+type LoginFormData = z.infer<typeof loginSchema>;
+type RegisterFormData = z.infer<typeof registerSchema>;
+type AuthSuccessPayload = {
+  user?: {
+    role?: "CUSTOMER" | "ADMIN";
+  };
 };
 
 function normalizeRedirectPath(redirectTo?: string) {
@@ -36,15 +47,37 @@ export function AuthForm({
   const loginRedirectPath = normalizeRedirectPath(redirectTo);
   const loginFallbackPath = normalizeRedirectPath(fallbackRedirectTo);
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [loading, setLoading] = useState(false);
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<LoginFormData | RegisterFormData>({
+    resolver: zodResolver(isLogin ? loginSchema : registerSchema),
+    defaultValues: isLogin
+      ? {
+          email: "",
+          password: "",
+        }
+      : {
+          email: "",
+          password: "",
+          name: "",
+          phone: "",
+        },
+  });
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setLoading(true);
+  async function onSubmit(values: LoginFormData | RegisterFormData) {
+    const payload = isLogin
+      ? {
+          email: values.email,
+          password: values.password,
+        }
+      : {
+          email: values.email,
+          password: values.password,
+          name: (values as RegisterFormData).name,
+          phone: (values as RegisterFormData).phone || undefined,
+        };
 
     try {
       const endpoint = isLogin ? "/api/auth/login" : "/api/auth/register";
@@ -54,20 +87,18 @@ export function AuthForm({
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          email,
-          password,
-          ...(isLogin ? {} : { name, phone: phone || undefined }),
-        }),
+        body: JSON.stringify(payload),
       });
 
       const data = (await response.json()) as {
         success: boolean;
         error?: string;
-        user?: {
-          role?: "CUSTOMER" | "ADMIN";
-        };
+        data?: AuthSuccessPayload;
+        message?: string;
+        code?: string;
       };
+
+      const userPayload = data.data?.user;
 
       if (!response.ok || !data.success) {
         toast.error(data.error ?? "Não foi possível concluir a autenticação");
@@ -80,7 +111,7 @@ export function AuthForm({
 
       setTimeout(() => {
         if (isLogin) {
-          const role = data.user?.role;
+          const role = userPayload?.role;
 
           if (requiredRole && role !== requiredRole) {
             router.push(loginFallbackPath);
@@ -95,14 +126,12 @@ export function AuthForm({
       }, 700);
     } catch {
       toast.error("Erro de conexão. Tente novamente.");
-    } finally {
-      setLoading(false);
     }
   }
 
   return (
     <form
-      onSubmit={handleSubmit}
+      onSubmit={handleSubmit(onSubmit)}
       className="site-surface mx-auto flex w-full max-w-md flex-col gap-4 rounded-lg border site-border p-6"
     >
       <h1 className="text-2xl font-semibold">
@@ -116,21 +145,24 @@ export function AuthForm({
           </label>
           <input
             id="name"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            required
+            {...register("name" as const)}
             className="site-input rounded-md px-3 py-2 text-sm outline-none"
           />
+          {errors.name ? (
+            <p className="text-sm text-red-500">{errors.name.message}</p>
+          ) : null}
 
           <label className="text-sm font-medium" htmlFor="phone">
             Telefone (opcional)
           </label>
           <input
             id="phone"
-            value={phone}
-            onChange={(event) => setPhone(event.target.value)}
+            {...register("phone" as const)}
             className="site-input rounded-md px-3 py-2 text-sm outline-none"
           />
+          {errors.phone ? (
+            <p className="text-sm text-red-500">{errors.phone.message}</p>
+          ) : null}
         </>
       ) : null}
 
@@ -140,11 +172,12 @@ export function AuthForm({
       <input
         id="email"
         type="email"
-        value={email}
-        onChange={(event) => setEmail(event.target.value)}
-        required
+        {...register("email")}
         className="site-input rounded-md px-3 py-2 text-sm outline-none"
       />
+      {errors.email ? (
+        <p className="text-sm text-red-500">{errors.email.message}</p>
+      ) : null}
 
       <label className="text-sm font-medium" htmlFor="password">
         Senha
@@ -152,18 +185,19 @@ export function AuthForm({
       <input
         id="password"
         type="password"
-        value={password}
-        onChange={(event) => setPassword(event.target.value)}
-        required
+        {...register("password")}
         className="site-input rounded-md px-3 py-2 text-sm outline-none"
       />
+      {errors.password ? (
+        <p className="text-sm text-red-500">{errors.password.message}</p>
+      ) : null}
 
       <button
         type="submit"
-        disabled={loading}
+        disabled={isSubmitting}
         className="site-btn mt-2 rounded-md px-4 py-2 text-sm font-medium disabled:opacity-60"
       >
-        {loading ? "Enviando..." : isLogin ? "Entrar" : "Criar conta"}
+        {isSubmitting ? "Enviando..." : isLogin ? "Entrar" : "Criar conta"}
       </button>
     </form>
   );
