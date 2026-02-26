@@ -55,6 +55,9 @@ export default function RootLayout({
                   <Link href="/cart" className="hover:underline">
                     Carrinho
                   </Link>
+                  <Link href="/admin" className="hover:underline">
+                    Admin
+                  </Link>
                   <Link href="/#sobre" className="hover:underline">
                     Sobre
                   </Link>
