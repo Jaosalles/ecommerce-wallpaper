@@ -1,0 +1,172 @@
+import { fail, ok } from "@/lib/api";
+import { getAuthTokenFromCookie, verifyToken } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { createOrderSchema } from "@/lib/validators";
+import { NextRequest } from "next/server";
+
+const WHATSAPP_NUMBER = process.env.WHATSAPP_NUMBER ?? "5517981635657";
+
+function buildWhatsAppCheckoutUrl(order: {
+  id: string;
+  items: { product: { name: string }; quantity: number; price: number }[];
+  total: number;
+}) {
+  const lines = order.items.map(
+    (item, index) =>
+      `${index + 1}. ${item.product.name} x${item.quantity} - ${(
+        item.price * item.quantity
+      ).toLocaleString("pt-BR", {
+        style: "currency",
+        currency: "BRL",
+      })}`,
+  );
+
+  const text = `Olá! Quero finalizar o pedido ${order.id}.%0A%0A${lines.join(
+    "%0A",
+  )}%0A%0ATotal: ${order.total.toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  })}`;
+
+  return `https://wa.me/${WHATSAPP_NUMBER}?text=${text}`;
+}
+
+async function getAuthenticatedUserId() {
+  const token = await getAuthTokenFromCookie();
+
+  if (!token) {
+    return null;
+  }
+
+  const payload = verifyToken(token);
+  return payload.userId;
+}
+
+export async function GET() {
+  try {
+    const userId = await getAuthenticatedUserId();
+
+    if (!userId) {
+      return fail("Não autenticado", 401);
+    }
+
+    const orders = await prisma.order.findMany({
+      where: { userId },
+      orderBy: { createdAt: "desc" },
+      include: {
+        items: {
+          include: {
+            product: {
+              select: {
+                id: true,
+                slug: true,
+                name: true,
+                imageUrl: true,
+                category: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return ok(orders);
+  } catch {
+    return fail("Erro ao buscar pedidos", 500);
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const userId = await getAuthenticatedUserId();
+
+    if (!userId) {
+      return fail("Não autenticado", 401);
+    }
+
+    const body = await request.json();
+    const parsed = createOrderSchema.safeParse(body);
+
+    if (!parsed.success) {
+      return fail(parsed.error.issues[0]?.message ?? "Dados inválidos", 400);
+    }
+
+    const itemMap = new Map<string, number>();
+
+    for (const item of parsed.data.items) {
+      const currentQuantity = itemMap.get(item.productId) ?? 0;
+      itemMap.set(item.productId, currentQuantity + item.quantity);
+    }
+
+    const uniqueProductIds = [...itemMap.keys()];
+
+    const products = await prisma.product.findMany({
+      where: {
+        id: {
+          in: uniqueProductIds,
+        },
+      },
+      select: {
+        id: true,
+        price: true,
+      },
+    });
+
+    if (products.length !== uniqueProductIds.length) {
+      return fail("Um ou mais produtos não foram encontrados", 404);
+    }
+
+    const productPriceMap = new Map(
+      products.map((product) => [product.id, product.price]),
+    );
+
+    let total = 0;
+
+    const itemsToCreate = uniqueProductIds.map((productId) => {
+      const quantity = itemMap.get(productId) ?? 0;
+      const price = productPriceMap.get(productId) ?? 0;
+
+      total += price * quantity;
+
+      return {
+        productId,
+        quantity,
+        price,
+      };
+    });
+
+    const order = await prisma.order.create({
+      data: {
+        userId,
+        total,
+        status: "pending",
+        items: {
+          create: itemsToCreate,
+        },
+      },
+      include: {
+        items: {
+          include: {
+            product: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const whatsappCheckoutUrl = buildWhatsAppCheckoutUrl(order);
+
+    return ok(
+      {
+        order,
+        whatsappCheckoutUrl,
+      },
+      201,
+    );
+  } catch {
+    return fail("Erro ao criar pedido", 500);
+  }
+}
