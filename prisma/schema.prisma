@@ -10,6 +10,11 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum UserRole {
+  CUSTOMER
+  ADMIN
+}
+
 // ============================================
 // MODELS - MVP (Fase 1)
 // ============================================
@@ -19,6 +24,7 @@ model User {
   email     String     @unique
   password  String     // Armazenar com hash bcrypt
   name      String
+  role      UserRole   @default(CUSTOMER)
   phone     String?
   avatar    String?    // URL da imagem de perfil
   createdAt DateTime   @default(now())

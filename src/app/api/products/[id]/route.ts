@@ -1,5 +1,6 @@
 import { fail, ok } from "@/lib/api";
-import { getAuthTokenFromCookie, verifyToken } from "@/lib/auth";
+import { getAuthenticatedUserFromCookie } from "@/lib/auth";
+import { authz } from "@/lib/authz/facade";
 import { prisma } from "@/lib/prisma";
 import { updateProductSchema } from "@/lib/validators";
 import { NextRequest } from "next/server";
@@ -31,13 +32,12 @@ export async function GET(_: NextRequest, { params }: Params) {
 
 export async function PUT(request: NextRequest, { params }: Params) {
   try {
-    const token = await getAuthTokenFromCookie();
+    const user = await getAuthenticatedUserFromCookie();
+    const authorization = authz.authorize(user, "product:update");
 
-    if (!token) {
-      return fail("Não autenticado", 401);
+    if (!authorization.ok) {
+      return fail(authorization.error, authorization.status);
     }
-
-    verifyToken(token);
 
     const { id } = await params;
 
@@ -46,6 +46,17 @@ export async function PUT(request: NextRequest, { params }: Params) {
 
     if (!parsed.success) {
       return fail(parsed.error.issues[0]?.message ?? "Dados inválidos", 400);
+    }
+
+    if (parsed.data.collectionId) {
+      const collection = await prisma.collection.findUnique({
+        where: { id: parsed.data.collectionId },
+        select: { id: true },
+      });
+
+      if (!collection) {
+        return fail("Coleção não encontrada", 404);
+      }
     }
 
     const product = await prisma.product.update({
@@ -64,13 +75,12 @@ export async function PUT(request: NextRequest, { params }: Params) {
 
 export async function DELETE(_: NextRequest, { params }: Params) {
   try {
-    const token = await getAuthTokenFromCookie();
+    const user = await getAuthenticatedUserFromCookie();
+    const authorization = authz.authorize(user, "product:delete");
 
-    if (!token) {
-      return fail("Não autenticado", 401);
+    if (!authorization.ok) {
+      return fail(authorization.error, authorization.status);
     }
-
-    verifyToken(token);
 
     const { id } = await params;
 

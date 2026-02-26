@@ -3,6 +3,8 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
 
+import { prisma } from "./prisma";
+
 const JWT_COOKIE_NAME = "auth_token";
 const JWT_EXPIRES_IN = "7d";
 
@@ -57,6 +59,42 @@ export async function clearAuthCookie() {
 export async function getAuthTokenFromCookie() {
   const cookieStore = await cookies();
   return cookieStore.get(JWT_COOKIE_NAME)?.value;
+}
+
+type AuthenticatedUser = {
+  id: string;
+  email: string;
+  role: "CUSTOMER" | "ADMIN";
+};
+
+export async function getAuthenticatedUserFromCookie(): Promise<AuthenticatedUser | null> {
+  const token = await getAuthTokenFromCookie();
+
+  if (!token) {
+    return null;
+  }
+
+  try {
+    const payload = verifyToken(token);
+
+    const user = await prisma.user.findUnique({
+      where: { id: payload.userId },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+      },
+    });
+
+    return user;
+  } catch {
+    return null;
+  }
+}
+
+export async function isAdminFromCookie() {
+  const user = await getAuthenticatedUserFromCookie();
+  return user?.role === "ADMIN";
 }
 
 export function sanitizeUser<T extends { password?: string }>(user: T) {

@@ -23,6 +23,14 @@ export const createProductSchema = z.object({
 
 export const updateProductSchema = createProductSchema.partial();
 
+export const createCollectionSchema = z.object({
+  name: z.string().min(2, "Nome da coleção inválido"),
+  slug: z.string().min(2, "Slug da coleção inválido"),
+  description: z.string().min(2, "Descrição inválida").optional(),
+});
+
+export const updateCollectionSchema = createCollectionSchema.partial();
+
 export const cartItemInputSchema = z.object({
   productId: z.string().min(1, "Produto inválido"),
   quantity: z

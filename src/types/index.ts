@@ -6,6 +6,7 @@ export type User = {
   id: string;
   email: string;
   name: string;
+  role: "CUSTOMER" | "ADMIN";
   phone?: string;
   createdAt: Date;
   updatedAt: Date;

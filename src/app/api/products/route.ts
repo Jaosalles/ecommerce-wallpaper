@@ -1,5 +1,6 @@
 import { fail, ok } from "@/lib/api";
-import { getAuthTokenFromCookie, verifyToken } from "@/lib/auth";
+import { getAuthenticatedUserFromCookie } from "@/lib/auth";
+import { authz } from "@/lib/authz/facade";
 import { prisma } from "@/lib/prisma";
 import { createProductSchema } from "@/lib/validators";
 import { NextRequest } from "next/server";
@@ -34,13 +35,12 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const token = await getAuthTokenFromCookie();
+    const user = await getAuthenticatedUserFromCookie();
+    const authorization = authz.authorize(user, "product:create");
 
-    if (!token) {
-      return fail("Não autenticado", 401);
+    if (!authorization.ok) {
+      return fail(authorization.error, authorization.status);
     }
-
-    verifyToken(token);
 
     const body = await request.json();
     const parsed = createProductSchema.safeParse(body);
@@ -55,6 +55,15 @@ export async function POST(request: NextRequest) {
 
     if (existingProduct) {
       return fail("Já existe um produto com este slug", 409);
+    }
+
+    const collection = await prisma.collection.findUnique({
+      where: { id: parsed.data.collectionId },
+      select: { id: true },
+    });
+
+    if (!collection) {
+      return fail("Coleção não encontrada", 404);
     }
 
     const product = await prisma.product.create({
