@@ -1,8 +1,15 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useCallback } from "react";
+import { useForm } from "react-hook-form";
 import { ConfirmDeleteModal } from "@/components/admin/confirm-delete-modal";
-import { toast } from "sonner";
+import { useAdminDelete } from "@/hooks/use-admin-delete";
+import { useAdminEditor } from "@/hooks/use-admin-editor";
+import { useAdminListResource } from "@/hooks/use-admin-list-resource";
+import { useAdminUpsert } from "@/hooks/use-admin-upsert";
+import { createCollectionSchema } from "@/lib/validators";
+import { z } from "zod";
 
 type CollectionItem = {
   id: string;
@@ -14,146 +21,110 @@ type CollectionItem = {
   };
 };
 
-type ApiResponse<T> = {
-  success: boolean;
-  data?: T;
-  error?: string;
-};
-
 const INITIAL_FORM = {
   name: "",
   slug: "",
   description: "",
 };
 
+const collectionFormSchema = createCollectionSchema.extend({
+  description: z
+    .union([z.literal(""), z.string().min(2, "Descrição inválida")])
+    .optional(),
+});
+
+type CollectionFormData = z.infer<typeof collectionFormSchema>;
+
 export function AdminCollectionsManager() {
-  const [collections, setCollections] = useState<CollectionItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState(INITIAL_FORM);
-  const [deleteTarget, setDeleteTarget] = useState<CollectionItem | null>(null);
-  const [deleting, setDeleting] = useState(false);
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<CollectionFormData>({
+    resolver: zodResolver(collectionFormSchema),
+    defaultValues: INITIAL_FORM,
+  });
 
-  const isEditing = useMemo(() => Boolean(editingId), [editingId]);
-
-  const loadCollections = useCallback(async () => {
-    try {
-      setLoading(true);
-
-      const response = await fetch("/api/collections", {
-        method: "GET",
-        credentials: "include",
+  const handleStartEdit = useCallback(
+    (item: CollectionItem) => {
+      reset({
+        name: item.name,
+        slug: item.slug,
+        description: item.description ?? "",
       });
+    },
+    [reset],
+  );
 
-      const payload = (await response.json()) as ApiResponse<CollectionItem[]>;
+  const resetFormState = useCallback(() => {
+    reset(INITIAL_FORM);
+  }, [reset]);
 
-      if (!response.ok || !payload.success || !payload.data) {
-        toast.error(payload.error ?? "Não foi possível carregar as coleções");
-        return;
-      }
-
-      setCollections(payload.data);
-    } catch {
-      toast.error("Erro de conexão ao carregar coleções");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadCollections();
-  }, [loadCollections]);
-
-  function resetForm() {
-    setForm(INITIAL_FORM);
-    setEditingId(null);
-  }
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setSaving(true);
-
-    try {
-      const endpoint = editingId
-        ? `/api/collections/${editingId}`
-        : "/api/collections";
-      const method = editingId ? "PUT" : "POST";
-
-      const response = await fetch(endpoint, {
-        method,
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: form.name,
-          slug: form.slug,
-          description: form.description || undefined,
-        }),
-      });
-
-      const payload = (await response.json()) as ApiResponse<CollectionItem>;
-
-      if (!response.ok || !payload.success) {
-        toast.error(payload.error ?? "Não foi possível salvar a coleção");
-        return;
-      }
-
-      toast.success(
-        editingId
-          ? "Coleção atualizada com sucesso"
-          : "Coleção criada com sucesso",
-      );
-      resetForm();
-      await loadCollections();
-    } catch {
-      toast.error("Erro de conexão ao salvar coleção");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  function handleStartEdit(item: CollectionItem) {
-    setEditingId(item.id);
-    setForm({
-      name: item.name,
-      slug: item.slug,
-      description: item.description ?? "",
+  const { editingId, isEditing, startEdit, resetEdit } =
+    useAdminEditor<CollectionItem>({
+      onStartEditItem: handleStartEdit,
+      onResetForm: resetFormState,
     });
-  }
 
-  async function handleDelete(id: string) {
-    setDeleting(true);
+  const {
+    data: collections,
+    loading,
+    reload: loadCollections,
+  } = useAdminListResource<CollectionItem[]>({
+    endpoint: "/api/collections",
+    initialData: [],
+    loadErrorMessage: "Erro de conexão ao carregar coleções",
+  });
 
-    try {
-      const response = await fetch(`/api/collections/${id}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
+  const { submit: submitCollection } = useAdminUpsert<
+    CollectionFormData,
+    CollectionItem
+  >({
+    editingId,
+    createEndpoint: "/api/collections",
+    updateEndpoint: (id) => `/api/collections/${id}`,
+    mapBody: (values) => {
+      const normalizedDescription = values.description?.trim();
 
-      const payload = (await response.json()) as ApiResponse<{
-        message: string;
-      }>;
-
-      if (!response.ok || !payload.success) {
-        toast.error(payload.error ?? "Não foi possível remover a coleção");
-        return;
-      }
-
-      if (editingId === id) {
-        resetForm();
-      }
-
-      toast.success("Coleção removida com sucesso");
+      return {
+        name: values.name,
+        slug: values.slug,
+        description: normalizedDescription ? normalizedDescription : undefined,
+      };
+    },
+    createSuccessMessage: "Coleção criada com sucesso",
+    updateSuccessMessage: "Coleção atualizada com sucesso",
+    fallbackErrorMessage: "Não foi possível salvar a coleção",
+    connectionErrorMessage: "Erro de conexão ao salvar coleção",
+    onSuccess: async () => {
+      resetEdit();
       await loadCollections();
-      setDeleteTarget(null);
-    } catch {
-      toast.error("Erro de conexão ao remover coleção");
-    } finally {
-      setDeleting(false);
-    }
+    },
+  });
+
+  async function onSubmit(values: CollectionFormData) {
+    await submitCollection(values);
   }
+
+  const {
+    deleteTarget,
+    deleting,
+    openDeleteModal,
+    closeDeleteModal,
+    confirmDelete,
+  } = useAdminDelete<CollectionItem>({
+    buildEndpoint: (id) => `/api/collections/${id}`,
+    fallbackErrorMessage: "Erro de conexão ao remover coleção",
+    successMessage: "Coleção removida com sucesso",
+    onDeleted: async (id) => {
+      if (editingId === id) {
+        resetEdit();
+      }
+
+      await loadCollections();
+    },
+  });
 
   return (
     <section className="grid gap-4 lg:grid-cols-[1.2fr_1fr]">
@@ -162,20 +133,19 @@ export function AdminCollectionsManager() {
           {isEditing ? "Editar coleção" : "Nova coleção"}
         </h2>
 
-        <form onSubmit={handleSubmit} className="mt-4 space-y-3">
+        <form onSubmit={handleSubmit(onSubmit)} className="mt-4 space-y-3">
           <div>
             <label htmlFor="collection-name" className="text-sm font-medium">
               Nome
             </label>
             <input
               id="collection-name"
-              required
-              value={form.name}
-              onChange={(event) =>
-                setForm((prev) => ({ ...prev, name: event.target.value }))
-              }
+              {...register("name")}
               className="site-input mt-1 w-full rounded-md px-3 py-2 text-sm outline-none"
             />
+            {errors.name ? (
+              <p className="mt-1 text-xs text-red-500">{errors.name.message}</p>
+            ) : null}
           </div>
 
           <div>
@@ -184,13 +154,12 @@ export function AdminCollectionsManager() {
             </label>
             <input
               id="collection-slug"
-              required
-              value={form.slug}
-              onChange={(event) =>
-                setForm((prev) => ({ ...prev, slug: event.target.value }))
-              }
+              {...register("slug")}
               className="site-input mt-1 w-full rounded-md px-3 py-2 text-sm outline-none"
             />
+            {errors.slug ? (
+              <p className="mt-1 text-xs text-red-500">{errors.slug.message}</p>
+            ) : null}
           </div>
 
           <div>
@@ -202,24 +171,23 @@ export function AdminCollectionsManager() {
             </label>
             <textarea
               id="collection-description"
-              value={form.description}
-              onChange={(event) =>
-                setForm((prev) => ({
-                  ...prev,
-                  description: event.target.value,
-                }))
-              }
+              {...register("description")}
               className="site-input mt-1 min-h-24 w-full rounded-md px-3 py-2 text-sm outline-none"
             />
+            {errors.description ? (
+              <p className="mt-1 text-xs text-red-500">
+                {errors.description.message}
+              </p>
+            ) : null}
           </div>
 
           <div className="flex flex-wrap gap-2">
             <button
               type="submit"
-              disabled={saving}
+              disabled={isSubmitting}
               className="site-btn rounded-md px-4 py-2 text-sm font-medium disabled:opacity-60"
             >
-              {saving
+              {isSubmitting
                 ? "Salvando..."
                 : isEditing
                   ? "Salvar alterações"
@@ -229,7 +197,7 @@ export function AdminCollectionsManager() {
             {isEditing ? (
               <button
                 type="button"
-                onClick={resetForm}
+                onClick={resetEdit}
                 className="site-btn-secondary rounded-md px-4 py-2 text-sm font-medium"
               >
                 Cancelar edição
@@ -265,14 +233,14 @@ export function AdminCollectionsManager() {
               <div className="mt-3 flex gap-2">
                 <button
                   type="button"
-                  onClick={() => handleStartEdit(item)}
+                  onClick={() => startEdit(item)}
                   className="site-btn-secondary rounded-md px-2 py-1 text-xs"
                 >
                   Editar
                 </button>
                 <button
                   type="button"
-                  onClick={() => setDeleteTarget(item)}
+                  onClick={() => openDeleteModal(item)}
                   className="site-btn-secondary rounded-md px-2 py-1 text-xs"
                 >
                   Excluir
@@ -288,12 +256,8 @@ export function AdminCollectionsManager() {
         title="Confirmar exclusão"
         description={`Tem certeza que deseja excluir a coleção \"${deleteTarget?.name ?? ""}\"?`}
         loading={deleting}
-        onCancel={() => setDeleteTarget(null)}
-        onConfirm={() => {
-          if (deleteTarget) {
-            handleDelete(deleteTarget.id);
-          }
-        }}
+        onCancel={closeDeleteModal}
+        onConfirm={confirmDelete}
       />
     </section>
   );

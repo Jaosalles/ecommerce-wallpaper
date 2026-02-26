@@ -1,8 +1,15 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useCallback, useMemo } from "react";
+import { useForm } from "react-hook-form";
 import { ConfirmDeleteModal } from "@/components/admin/confirm-delete-modal";
-import { toast } from "sonner";
+import { useAdminDelete } from "@/hooks/use-admin-delete";
+import { useAdminEditor } from "@/hooks/use-admin-editor";
+import { useAdminListResource } from "@/hooks/use-admin-list-resource";
+import { useAdminUpsert } from "@/hooks/use-admin-upsert";
+import { createProductSchema } from "@/lib/validators";
+import { z } from "zod";
 
 type CollectionItem = {
   id: string;
@@ -21,12 +28,6 @@ type ProductItem = {
   collection: CollectionItem;
 };
 
-type ApiResponse<T> = {
-  success: boolean;
-  data?: T;
-  error?: string;
-};
-
 const INITIAL_FORM = {
   name: "",
   slug: "",
@@ -36,173 +37,146 @@ const INITIAL_FORM = {
   collectionId: "",
 };
 
+const productFormSchema = z.object({
+  name: createProductSchema.shape.name,
+  slug: createProductSchema.shape.slug,
+  description: createProductSchema.shape.description,
+  price: z
+    .string()
+    .min(1, "Preço é obrigatório")
+    .refine(
+      (value) => {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) && parsed > 0;
+      },
+      { message: "Preço deve ser positivo" },
+    ),
+  imageUrl: createProductSchema.shape.imageUrl,
+  collectionId: createProductSchema.shape.collectionId,
+});
+
+type ProductFormData = z.infer<typeof productFormSchema>;
+
 export function AdminProductsManager() {
-  const [products, setProducts] = useState<ProductItem[]>([]);
-  const [collections, setCollections] = useState<CollectionItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState(INITIAL_FORM);
-  const [deleteTarget, setDeleteTarget] = useState<ProductItem | null>(null);
-  const [deleting, setDeleting] = useState(false);
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setValue,
+    getValues,
+    formState: { errors, isSubmitting },
+  } = useForm<ProductFormData>({
+    resolver: zodResolver(productFormSchema),
+    defaultValues: INITIAL_FORM,
+  });
 
-  const isEditing = useMemo(() => Boolean(editingId), [editingId]);
+  const handleStartEdit = useCallback(
+    (item: ProductItem) => {
+      reset({
+        name: item.name,
+        slug: item.slug,
+        description: item.description,
+        price: item.price.toString(),
+        imageUrl: item.imageUrl,
+        collectionId: item.collectionId,
+      });
+    },
+    [reset],
+  );
 
-  const loadCollections = useCallback(async () => {
-    const response = await fetch("/api/collections", {
-      method: "GET",
-      credentials: "include",
+  const { data: collections, loading: loadingCollections } =
+    useAdminListResource<CollectionItem[]>({
+      endpoint: "/api/collections",
+      initialData: [],
+      loadErrorMessage: "Erro de conexão ao carregar coleções",
+      onLoaded: (collectionList) => {
+        if (collectionList.length === 0) {
+          return;
+        }
+
+        const currentCollectionId = getValues("collectionId");
+
+        if (!currentCollectionId) {
+          setValue("collectionId", collectionList[0].id);
+        }
+      },
     });
 
-    const payload = (await response.json()) as ApiResponse<CollectionItem[]>;
-
-    if (!response.ok || !payload.success || !payload.data) {
-      throw new Error(payload.error ?? "Não foi possível carregar coleções");
-    }
-
-    const collectionList = payload.data;
-    setCollections(collectionList);
-
-    if (collectionList.length > 0) {
-      setForm((prev) => ({
-        ...prev,
-        collectionId: prev.collectionId || collectionList[0].id,
-      }));
-    }
-  }, []);
-
-  const loadProducts = useCallback(async () => {
-    const response = await fetch("/api/products", {
-      method: "GET",
-      credentials: "include",
-    });
-
-    const payload = (await response.json()) as ApiResponse<ProductItem[]>;
-
-    if (!response.ok || !payload.success || !payload.data) {
-      throw new Error(payload.error ?? "Não foi possível carregar produtos");
-    }
-
-    setProducts(payload.data);
-  }, []);
-
-  const loadData = useCallback(async () => {
-    try {
-      setLoading(true);
-      await Promise.all([loadCollections(), loadProducts()]);
-    } catch (errorValue) {
-      if (errorValue instanceof Error) {
-        toast.error(errorValue.message);
-      } else {
-        toast.error("Erro ao carregar dados");
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [loadCollections, loadProducts]);
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
-
-  function resetForm() {
-    setEditingId(null);
-    setForm((prev) => ({
+  const resetFormState = useCallback(() => {
+    reset({
       ...INITIAL_FORM,
-      collectionId: collections[0]?.id ?? prev.collectionId,
-    }));
-  }
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setSaving(true);
-
-    try {
-      const endpoint = editingId
-        ? `/api/products/${editingId}`
-        : "/api/products";
-      const method = editingId ? "PUT" : "POST";
-
-      const response = await fetch(endpoint, {
-        method,
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: form.name,
-          slug: form.slug,
-          description: form.description,
-          price: Number(form.price),
-          imageUrl: form.imageUrl,
-          collectionId: form.collectionId,
-        }),
-      });
-
-      const payload = (await response.json()) as ApiResponse<ProductItem>;
-
-      if (!response.ok || !payload.success) {
-        toast.error(payload.error ?? "Não foi possível salvar o produto");
-        return;
-      }
-
-      toast.success(
-        editingId
-          ? "Produto atualizado com sucesso"
-          : "Produto criado com sucesso",
-      );
-      resetForm();
-      await loadProducts();
-    } catch {
-      toast.error("Erro de conexão ao salvar produto");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  function handleStartEdit(item: ProductItem) {
-    setEditingId(item.id);
-    setForm({
-      name: item.name,
-      slug: item.slug,
-      description: item.description,
-      price: item.price.toString(),
-      imageUrl: item.imageUrl,
-      collectionId: item.collectionId,
+      collectionId: collections[0]?.id ?? "",
     });
-  }
+  }, [collections, reset]);
 
-  async function handleDelete(id: string) {
-    setDeleting(true);
+  const { editingId, isEditing, startEdit, resetEdit } =
+    useAdminEditor<ProductItem>({
+      onStartEditItem: handleStartEdit,
+      onResetForm: resetFormState,
+    });
 
-    try {
-      const response = await fetch(`/api/products/${id}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
+  const {
+    data: products,
+    loading: loadingProducts,
+    reload: loadProducts,
+  } = useAdminListResource<ProductItem[]>({
+    endpoint: "/api/products",
+    initialData: [],
+    loadErrorMessage: "Erro de conexão ao carregar produtos",
+  });
 
-      const payload = (await response.json()) as ApiResponse<{
-        message: string;
-      }>;
+  const loading = useMemo(
+    () => loadingCollections || loadingProducts,
+    [loadingCollections, loadingProducts],
+  );
 
-      if (!response.ok || !payload.success) {
-        toast.error(payload.error ?? "Não foi possível remover o produto");
-        return;
-      }
-
-      if (editingId === id) {
-        resetForm();
-      }
-
-      toast.success("Produto removido com sucesso");
+  const { submit: submitProduct } = useAdminUpsert<
+    ProductFormData,
+    ProductItem
+  >({
+    editingId,
+    createEndpoint: "/api/products",
+    updateEndpoint: (id) => `/api/products/${id}`,
+    mapBody: (values) => ({
+      name: values.name,
+      slug: values.slug,
+      description: values.description,
+      price: Number(values.price),
+      imageUrl: values.imageUrl,
+      collectionId: values.collectionId,
+    }),
+    createSuccessMessage: "Produto criado com sucesso",
+    updateSuccessMessage: "Produto atualizado com sucesso",
+    fallbackErrorMessage: "Não foi possível salvar o produto",
+    connectionErrorMessage: "Erro de conexão ao salvar produto",
+    onSuccess: async () => {
+      resetEdit();
       await loadProducts();
-      setDeleteTarget(null);
-    } catch {
-      toast.error("Erro de conexão ao remover produto");
-    } finally {
-      setDeleting(false);
-    }
+    },
+  });
+
+  async function onSubmit(values: ProductFormData) {
+    await submitProduct(values);
   }
+
+  const {
+    deleteTarget,
+    deleting,
+    openDeleteModal,
+    closeDeleteModal,
+    confirmDelete,
+  } = useAdminDelete<ProductItem>({
+    buildEndpoint: (id) => `/api/products/${id}`,
+    fallbackErrorMessage: "Erro de conexão ao remover produto",
+    successMessage: "Produto removido com sucesso",
+    onDeleted: async (id) => {
+      if (editingId === id) {
+        resetEdit();
+      }
+
+      await loadProducts();
+    },
+  });
 
   return (
     <section className="grid gap-4 lg:grid-cols-[1.2fr_1fr]">
@@ -211,20 +185,19 @@ export function AdminProductsManager() {
           {isEditing ? "Editar produto" : "Novo produto"}
         </h2>
 
-        <form onSubmit={handleSubmit} className="mt-4 space-y-3">
+        <form onSubmit={handleSubmit(onSubmit)} className="mt-4 space-y-3">
           <div>
             <label className="text-sm font-medium" htmlFor="product-name">
               Nome
             </label>
             <input
               id="product-name"
-              required
-              value={form.name}
-              onChange={(event) =>
-                setForm((prev) => ({ ...prev, name: event.target.value }))
-              }
+              {...register("name")}
               className="site-input mt-1 w-full rounded-md px-3 py-2 text-sm outline-none"
             />
+            {errors.name ? (
+              <p className="mt-1 text-xs text-red-500">{errors.name.message}</p>
+            ) : null}
           </div>
 
           <div>
@@ -233,13 +206,12 @@ export function AdminProductsManager() {
             </label>
             <input
               id="product-slug"
-              required
-              value={form.slug}
-              onChange={(event) =>
-                setForm((prev) => ({ ...prev, slug: event.target.value }))
-              }
+              {...register("slug")}
               className="site-input mt-1 w-full rounded-md px-3 py-2 text-sm outline-none"
             />
+            {errors.slug ? (
+              <p className="mt-1 text-xs text-red-500">{errors.slug.message}</p>
+            ) : null}
           </div>
 
           <div>
@@ -251,16 +223,14 @@ export function AdminProductsManager() {
             </label>
             <textarea
               id="product-description"
-              required
-              value={form.description}
-              onChange={(event) =>
-                setForm((prev) => ({
-                  ...prev,
-                  description: event.target.value,
-                }))
-              }
+              {...register("description")}
               className="site-input mt-1 min-h-24 w-full rounded-md px-3 py-2 text-sm outline-none"
             />
+            {errors.description ? (
+              <p className="mt-1 text-xs text-red-500">
+                {errors.description.message}
+              </p>
+            ) : null}
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
@@ -273,13 +243,14 @@ export function AdminProductsManager() {
                 type="number"
                 min="0"
                 step="0.01"
-                required
-                value={form.price}
-                onChange={(event) =>
-                  setForm((prev) => ({ ...prev, price: event.target.value }))
-                }
+                {...register("price")}
                 className="site-input mt-1 w-full rounded-md px-3 py-2 text-sm outline-none"
               />
+              {errors.price ? (
+                <p className="mt-1 text-xs text-red-500">
+                  {errors.price.message}
+                </p>
+              ) : null}
             </div>
 
             <div>
@@ -291,14 +262,7 @@ export function AdminProductsManager() {
               </label>
               <select
                 id="product-collection"
-                required
-                value={form.collectionId}
-                onChange={(event) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    collectionId: event.target.value,
-                  }))
-                }
+                {...register("collectionId")}
                 className="site-input mt-1 w-full rounded-md px-3 py-2 text-sm outline-none"
               >
                 {collections.map((item) => (
@@ -307,6 +271,11 @@ export function AdminProductsManager() {
                   </option>
                 ))}
               </select>
+              {errors.collectionId ? (
+                <p className="mt-1 text-xs text-red-500">
+                  {errors.collectionId.message}
+                </p>
+              ) : null}
             </div>
           </div>
 
@@ -316,22 +285,23 @@ export function AdminProductsManager() {
             </label>
             <input
               id="product-image"
-              required
-              value={form.imageUrl}
-              onChange={(event) =>
-                setForm((prev) => ({ ...prev, imageUrl: event.target.value }))
-              }
+              {...register("imageUrl")}
               className="site-input mt-1 w-full rounded-md px-3 py-2 text-sm outline-none"
             />
+            {errors.imageUrl ? (
+              <p className="mt-1 text-xs text-red-500">
+                {errors.imageUrl.message}
+              </p>
+            ) : null}
           </div>
 
           <div className="flex flex-wrap gap-2">
             <button
               type="submit"
-              disabled={saving}
+              disabled={isSubmitting}
               className="site-btn rounded-md px-4 py-2 text-sm font-medium disabled:opacity-60"
             >
-              {saving
+              {isSubmitting
                 ? "Salvando..."
                 : isEditing
                   ? "Salvar alterações"
@@ -341,7 +311,7 @@ export function AdminProductsManager() {
             {isEditing ? (
               <button
                 type="button"
-                onClick={resetForm}
+                onClick={resetEdit}
                 className="site-btn-secondary rounded-md px-4 py-2 text-sm font-medium"
               >
                 Cancelar edição
@@ -383,14 +353,14 @@ export function AdminProductsManager() {
               <div className="mt-3 flex gap-2">
                 <button
                   type="button"
-                  onClick={() => handleStartEdit(item)}
+                  onClick={() => startEdit(item)}
                   className="site-btn-secondary rounded-md px-2 py-1 text-xs"
                 >
                   Editar
                 </button>
                 <button
                   type="button"
-                  onClick={() => setDeleteTarget(item)}
+                  onClick={() => openDeleteModal(item)}
                   className="site-btn-secondary rounded-md px-2 py-1 text-xs"
                 >
                   Excluir
@@ -406,12 +376,8 @@ export function AdminProductsManager() {
         title="Confirmar exclusão"
         description={`Tem certeza que deseja excluir o produto \"${deleteTarget?.name ?? ""}\"?`}
         loading={deleting}
-        onCancel={() => setDeleteTarget(null)}
-        onConfirm={() => {
-          if (deleteTarget) {
-            handleDelete(deleteTarget.id);
-          }
-        }}
+        onCancel={closeDeleteModal}
+        onConfirm={confirmDelete}
       />
     </section>
   );
