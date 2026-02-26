@@ -90,7 +90,10 @@ export async function DELETE(_: NextRequest, { params }: Params) {
     });
 
     if (productsCount > 0) {
-      return fail("Não é possível remover coleção com produtos vinculados", 409);
+      return fail(
+        "Não é possível remover coleção com produtos vinculados",
+        409,
+      );
     }
 
     await prisma.collection.delete({

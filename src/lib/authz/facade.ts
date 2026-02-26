@@ -21,7 +21,10 @@ class AuthorizationFacade {
     return this.hasPermission(actor.role, permission);
   }
 
-  authorize(actor: AuthzActor | null, permission: Permission): AuthorizationResult {
+  authorize(
+    actor: AuthzActor | null,
+    permission: Permission,
+  ): AuthorizationResult {
     if (!actor) {
       return {
         ok: false,
