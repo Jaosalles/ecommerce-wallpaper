@@ -12,12 +12,19 @@ export const loginSchema = z.object({
   password: z.string().min(1, "Senha é obrigatória"),
 });
 
+export const loginRequestSchema = loginSchema.extend({
+  requiredRole: z.enum(["CUSTOMER", "ADMIN"]).optional(),
+});
+
 export const createProductSchema = z.object({
   name: z.string().min(2, "Nome inválido"),
   slug: z.string().min(2, "Slug inválido"),
   description: z.string().min(10, "Descrição muito curta"),
   price: z.number().positive("Preço deve ser positivo"),
-  imageUrl: z.string().min(1, "URL da imagem é obrigatória"),
+  imageUrls: z
+    .array(z.string().url("URL da imagem inválida"))
+    .min(1, "Pelo menos 1 imagem é obrigatória")
+    .max(3, "Máximo de 3 imagens por produto"),
   collectionId: z.string().min(1, "Coleção inválida"),
 });
 
@@ -54,4 +61,20 @@ export const createOrderSchema = z.object({
       }),
     )
     .min(1, "O pedido precisa ter ao menos 1 item"),
+});
+
+export const uploadImageMetadataSchema = z
+  .object({
+    productId: z.string().trim().optional(),
+    draftId: z.string().trim().optional(),
+    bucket: z.enum(["product-images", "product-originals"]),
+  })
+  .refine((value) => Boolean(value.productId || value.draftId), {
+    message: "Informe productId ou draftId para o upload",
+    path: ["productId"],
+  });
+
+export const deleteUploadSchema = z.object({
+  bucket: z.enum(["product-images", "product-originals"]),
+  path: z.string().min(1, "Caminho do arquivo inválido"),
 });
