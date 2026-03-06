@@ -18,7 +18,7 @@ type ProductCatalogItem = {
   name: string;
   description: string;
   price: number;
-  imageUrl: string;
+  imageUrls: string[];
   collection: {
     name: string;
   };
@@ -93,55 +93,61 @@ export function ProductsCatalogGrid({ products }: ProductsCatalogGridProps) {
       }`}
       aria-busy={isNavigating}
     >
-      {products.map((product) => (
-        <article
-          key={product.id}
-          className="site-surface space-y-3 rounded-lg border site-border p-4"
-        >
-          <div
-            className="site-surface-soft h-48 overflow-hidden rounded-md border site-border"
-            style={{
-              viewTransitionName: getProductImageTransitionName(product.slug),
-            }}
-          >
-            <Image
-              src={product.imageUrl}
-              alt={product.name}
-              width={640}
-              height={480}
-              className="h-full w-full object-cover"
-            />
-          </div>
+      {products.map((product) => {
+        const coverImageUrl =
+          product.imageUrls[0] ??
+          "https://picsum.photos/seed/product-grid-fallback/1200/1800";
 
-          <div className="space-y-2">
-            <h2
-              className="text-lg font-semibold"
+        return (
+          <article
+            key={product.id}
+            className="site-surface space-y-3 rounded-lg border site-border p-4"
+          >
+            <div
+              className="site-surface-soft h-48 overflow-hidden rounded-md border site-border"
               style={{
-                viewTransitionName: getProductTitleTransitionName(product.slug),
+                viewTransitionName: getProductImageTransitionName(product.slug),
               }}
             >
-              {product.name}
-            </h2>
-            <p className="site-muted text-sm">{product.description}</p>
-            <p className="text-sm">Coleção: {product.collection.name}</p>
-            <p className="font-medium">
-              {product.price.toLocaleString("pt-BR", {
-                style: "currency",
-                currency: "BRL",
-              })}
-            </p>
-          </div>
+              <Image
+                src={coverImageUrl}
+                alt={product.name}
+                width={640}
+                height={480}
+                className="h-full w-full object-cover"
+              />
+            </div>
 
-          <button
-            type="button"
-            disabled={isNavigating}
-            onClick={() => navigateToProduct(product.slug)}
-            className="site-btn mt-4 inline-flex rounded-md px-3 py-2 text-sm font-medium disabled:opacity-60"
-          >
-            {isNavigating ? "Abrindo..." : "Ver detalhes"}
-          </button>
-        </article>
-      ))}
+            <div className="space-y-2">
+              <h2
+                className="text-lg font-semibold"
+                style={{
+                  viewTransitionName: getProductTitleTransitionName(product.slug),
+                }}
+              >
+                {product.name}
+              </h2>
+              <p className="site-muted text-sm">{product.description}</p>
+              <p className="text-sm">Coleção: {product.collection.name}</p>
+              <p className="font-medium">
+                {product.price.toLocaleString("pt-BR", {
+                  style: "currency",
+                  currency: "BRL",
+                })}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              disabled={isNavigating}
+              onClick={() => navigateToProduct(product.slug)}
+              className="site-btn mt-4 inline-flex rounded-md px-3 py-2 text-sm font-medium disabled:opacity-60"
+            >
+              {isNavigating ? "Abrindo..." : "Ver detalhes"}
+            </button>
+          </article>
+        );
+      })}
     </section>
   );
 }

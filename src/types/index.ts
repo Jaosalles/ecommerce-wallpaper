@@ -29,7 +29,7 @@ export type Product = {
   slug: string;
   description: string;
   price: number;
-  imageUrl: string;
+  imageUrls: string[];
   collectionId: string;
   collection?: Collection;
   createdAt: Date;

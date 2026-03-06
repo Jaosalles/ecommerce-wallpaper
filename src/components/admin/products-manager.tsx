@@ -3,6 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useCallback, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
+import { toast } from "sonner";
 import { ConfirmDeleteModal } from "@/components/admin/confirm-delete-modal";
 import { AdminProductsForm } from "@/components/admin/products-form";
 import {
@@ -18,10 +19,23 @@ import { useAdminDelete } from "@/hooks/use-admin-delete";
 import { useAdminEditor } from "@/hooks/use-admin-editor";
 import { useAdminListResource } from "@/hooks/use-admin-list-resource";
 import { useAdminUpsert } from "@/hooks/use-admin-upsert";
+import { apiFetch, parseApiResponse } from "@/lib/client-api";
 import { PaginatedResponse } from "@/types";
+
+type UploadImageResponse = {
+  bucket: "product-images" | "product-originals";
+  path: string;
+  url: string;
+  mimeType: string;
+  size: number;
+};
 
 export function AdminProductsManager() {
   const [productsPageRequest, setProductsPageRequest] = useState(1);
+  const [uploadLoading, setUploadLoading] = useState(false);
+  const [creationDraftId, setCreationDraftId] = useState(() =>
+    crypto.randomUUID(),
+  );
 
   const {
     register,
@@ -37,12 +51,17 @@ export function AdminProductsManager() {
 
   const handleStartEdit = useCallback(
     (item: ProductItem) => {
+      const normalizedImageUrls = [...item.imageUrls.slice(0, 3)];
+      while (normalizedImageUrls.length < 3) {
+        normalizedImageUrls.push("");
+      }
+
       reset({
         name: item.name,
         slug: item.slug,
         description: item.description,
         price: item.price.toString(),
-        imageUrl: item.imageUrl,
+        imageUrls: normalizedImageUrls,
         collectionId: item.collectionId,
       });
     },
@@ -75,6 +94,8 @@ export function AdminProductsManager() {
       ...INITIAL_FORM,
       collectionId: collections[0]?.id ?? "",
     });
+
+    setCreationDraftId(crypto.randomUUID());
   }, [collections, reset]);
 
   const { editingId, isEditing, startEdit, resetEdit } =
@@ -128,7 +149,7 @@ export function AdminProductsManager() {
       slug: values.slug,
       description: values.description,
       price: Number(values.price),
-      imageUrl: values.imageUrl,
+      imageUrls: values.imageUrls.filter((value) => value.trim().length > 0),
       collectionId: values.collectionId,
     }),
     createSuccessMessage: "Produto criado com sucesso",
@@ -143,6 +164,61 @@ export function AdminProductsManager() {
 
   async function onSubmit(values: ProductFormData) {
     await submitProduct(values);
+  }
+
+  async function handleUploadImage(
+    file: File,
+    bucket: "product-images" | "product-originals",
+  ) {
+    setUploadLoading(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      if (editingId) {
+        formData.append("productId", editingId);
+      } else {
+        formData.append("draftId", creationDraftId);
+      }
+      formData.append("bucket", bucket);
+
+      const response = await apiFetch("/api/uploads", {
+        method: "POST",
+        body: formData,
+      });
+
+      const uploaded = await parseApiResponse<UploadImageResponse>(response, {
+        fallbackErrorMessage: "Nao foi possivel enviar a imagem",
+      });
+
+      const currentImageUrls = getValues("imageUrls");
+      const targetIndex = currentImageUrls.findIndex(
+        (value) => value.trim().length === 0,
+      );
+
+      if (targetIndex === -1) {
+        toast.error("Limite de 3 imagens atingido");
+        return;
+      }
+
+      const nextImageUrls = [...currentImageUrls];
+      nextImageUrls[targetIndex] = uploaded.url;
+
+      setValue("imageUrls", nextImageUrls, {
+        shouldValidate: true,
+        shouldDirty: true,
+      });
+
+      toast.success("Imagem enviada e URL preenchida");
+    } catch (errorValue) {
+      if (errorValue instanceof Error) {
+        toast.error(errorValue.message);
+      } else {
+        toast.error("Erro ao enviar imagem");
+      }
+    } finally {
+      setUploadLoading(false);
+    }
   }
 
   const {
@@ -178,6 +254,11 @@ export function AdminProductsManager() {
             errors={errors}
             register={register}
             collections={collections}
+            uploadLoading={uploadLoading}
+            canUploadImage={
+              getValues("imageUrls").some((value) => value.trim().length === 0)
+            }
+            onUploadImage={handleUploadImage}
             onCancelEdit={resetEdit}
           />
         </form>

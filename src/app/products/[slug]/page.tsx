@@ -29,24 +29,48 @@ export default async function ProductDetailsPage({
     notFound();
   }
 
+  const imageUrls = product.imageUrls;
+  const coverImageUrl = imageUrls[0] ?? "https://picsum.photos/seed/product-fallback/1200/1800";
+
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-6 py-10">
       <ProductsBackLink />
 
       <article className="site-surface grid gap-6 rounded-lg border site-border p-6 md:grid-cols-2">
-        <div
-          className="site-surface-soft overflow-hidden rounded-md border site-border"
-          style={{
-            viewTransitionName: getProductImageTransitionName(product.slug),
-          }}
-        >
-          <Image
-            src={product.imageUrl}
-            alt={product.name}
-            width={900}
-            height={900}
-            className="h-full w-full object-cover"
-          />
+        <div className="space-y-3">
+          <div
+            className="site-surface-soft overflow-hidden rounded-md border site-border"
+            style={{
+              viewTransitionName: getProductImageTransitionName(product.slug),
+            }}
+          >
+            <Image
+              src={coverImageUrl}
+              alt={product.name}
+              width={900}
+              height={900}
+              className="h-full w-full object-cover"
+            />
+          </div>
+
+          {imageUrls.length > 1 ? (
+            <div className="grid grid-cols-3 gap-2">
+              {imageUrls.slice(1, 3).map((imageUrl, index) => (
+                <div
+                  key={`${imageUrl}-${index}`}
+                  className="site-surface-soft overflow-hidden rounded-md border site-border"
+                >
+                  <Image
+                    src={imageUrl}
+                    alt={`${product.name} - imagem ${index + 2}`}
+                    width={400}
+                    height={400}
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+              ))}
+            </div>
+          ) : null}
         </div>
 
         <div>

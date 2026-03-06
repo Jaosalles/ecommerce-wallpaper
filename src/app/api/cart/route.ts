@@ -58,7 +58,7 @@ async function buildCartResponse(items: CartCookieItem[]) {
       slug: true,
       name: true,
       price: true,
-      imageUrl: true,
+      imageUrls: true,
       collection: {
         select: {
           id: true,
@@ -87,7 +87,7 @@ async function buildCartResponse(items: CartCookieItem[]) {
         productId: product.id,
         slug: product.slug,
         name: product.name,
-        imageUrl: product.imageUrl,
+        imageUrl: product.imageUrls[0] ?? "",
         collection: product.collection,
         quantity: item.quantity,
         price: product.price,

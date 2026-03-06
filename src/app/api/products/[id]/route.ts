@@ -8,12 +8,15 @@ import {
   successMessages,
 } from "@/lib/error-messages";
 import { prisma } from "@/lib/prisma";
+import { deleteStorageObjectFromUrl } from "@/lib/storage";
 import { updateProductSchema } from "@/lib/validators";
 import { NextRequest } from "next/server";
 
 type Params = {
   params: Promise<{ id: string }>;
 };
+
+export const runtime = "nodejs";
 
 export async function GET(_: NextRequest, { params }: Params) {
   try {
@@ -82,6 +85,17 @@ export async function PUT(request: NextRequest, { params }: Params) {
       }
     }
 
+    const previousProduct = await prisma.product.findUnique({
+      where: { id },
+      select: { id: true, imageUrls: true },
+    });
+
+    if (!previousProduct) {
+      return fail(errorMessages.product.notFound, 404, {
+        code: errorCodes.product.notFound,
+      });
+    }
+
     const product = await prisma.product.update({
       where: { id },
       data: parsed.data,
@@ -89,6 +103,21 @@ export async function PUT(request: NextRequest, { params }: Params) {
         collection: true,
       },
     });
+
+    if (parsed.data.imageUrls) {
+      const nextImageUrls = new Set(parsed.data.imageUrls);
+      const removedImageUrls = previousProduct.imageUrls.filter(
+        (url) => !nextImageUrls.has(url),
+      );
+
+      for (const removedUrl of removedImageUrls) {
+        try {
+          await deleteStorageObjectFromUrl(removedUrl);
+        } catch {
+          // Ignore cleanup failures to avoid blocking successful product updates.
+        }
+      }
+    }
 
     return ok(product);
   } catch {
@@ -116,7 +145,26 @@ export async function DELETE(_: NextRequest, { params }: Params) {
 
     const { id } = await params;
 
+    const previousProduct = await prisma.product.findUnique({
+      where: { id },
+      select: { id: true, imageUrls: true },
+    });
+
+    if (!previousProduct) {
+      return fail(errorMessages.product.notFound, 404, {
+        code: errorCodes.product.notFound,
+      });
+    }
+
     await prisma.product.delete({ where: { id } });
+
+    for (const imageUrl of previousProduct.imageUrls) {
+      try {
+        await deleteStorageObjectFromUrl(imageUrl);
+      } catch {
+        // Ignore cleanup failures to avoid blocking successful product deletions.
+      }
+    }
 
     return ok({ message: successMessages.product.deleted });
   } catch (errorValue) {

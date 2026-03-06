@@ -64,7 +64,7 @@ export async function GET() {
                 id: true,
                 slug: true,
                 name: true,
-                imageUrl: true,
+                imageUrls: true,
                 collection: {
                   select: {
                     id: true,

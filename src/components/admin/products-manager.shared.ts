@@ -13,7 +13,7 @@ export type ProductItem = {
   slug: string;
   description: string;
   price: number;
-  imageUrl: string;
+  imageUrls: string[];
   collectionId: string;
   collection: CollectionItem;
 };
@@ -25,9 +25,28 @@ export const INITIAL_FORM = {
   slug: "",
   description: "",
   price: "",
-  imageUrl: "",
+  imageUrls: ["", "", ""],
   collectionId: "",
 };
+
+const optionalImageUrlSchema = z
+  .string()
+  .transform((value) => value.trim())
+  .refine(
+    (value) => {
+      if (!value) {
+        return true;
+      }
+
+      try {
+        new URL(value);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    { message: "URL da imagem inválida" },
+  );
 
 export const productFormSchema = z.object({
   name: createProductSchema.shape.name,
@@ -43,7 +62,15 @@ export const productFormSchema = z.object({
       },
       { message: "Preço deve ser positivo" },
     ),
-  imageUrl: createProductSchema.shape.imageUrl,
+  imageUrls: z
+    .array(optionalImageUrlSchema)
+    .length(3, "Use exatamente 3 campos de imagem")
+    .refine(
+      (values) => values.filter((value) => value.length > 0).length >= 1,
+      {
+        message: "Pelo menos 1 imagem é obrigatória",
+      },
+    ),
   collectionId: createProductSchema.shape.collectionId,
 });
 

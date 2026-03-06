@@ -93,7 +93,7 @@ async function main() {
       slug: "colecao10",
       description: "Arte geométrica para ambientes contemporâneos",
     },
-  ] as const;
+  ];
 
   const collections = await Promise.all(
     collectionDefinitions.map((collection) =>
@@ -113,72 +113,104 @@ async function main() {
       description:
         "Design minimalista em tons de preto e cinza, perfeito para ambientes modernos",
       price: 19.9,
-      imageUrl: "/uploads/minimalista-preto.jpg",
+      imageUrls: [
+        "https://picsum.photos/seed/minimalista-preto/1200/1800",
+        "https://picsum.photos/seed/minimalista-preto-2/1200/1800",
+        "https://picsum.photos/seed/minimalista-preto-3/1200/1800",
+      ],
     },
     {
       name: "Pastel Rosa",
       slug: "pastel-rosa",
       description: "Tons suaves de rosa e bege, ideal para quartos e salas",
       price: 24.9,
-      imageUrl: "/uploads/pastel-rosa.jpg",
+      imageUrls: [
+        "https://picsum.photos/seed/pastel-rosa/1200/1800",
+        "https://picsum.photos/seed/pastel-rosa-2/1200/1800",
+      ],
     },
     {
       name: "Dark Mode",
       slug: "dark-mode",
       description: "Papel de parede escuro com padrões abstratos",
       price: 29.9,
-      imageUrl: "/uploads/dark-mode.jpg",
+      imageUrls: [
+        "https://picsum.photos/seed/dark-mode/1200/1800",
+        "https://picsum.photos/seed/dark-mode-2/1200/1800",
+      ],
     },
     {
       name: "Floresta",
       slug: "floresta",
       description: "Imagem de floresta com verde vibrante",
       price: 34.9,
-      imageUrl: "/uploads/floresta.jpg",
+      imageUrls: [
+        "https://picsum.photos/seed/floresta/1200/1800",
+        "https://picsum.photos/seed/floresta-2/1200/1800",
+      ],
     },
     {
       name: "Abstracto Colorido",
       slug: "abstracto-colorido",
       description: "Design abstrato com cores vibrantes e geométricas",
       price: 39.9,
-      imageUrl: "/uploads/abstract-colorido.jpg",
+      imageUrls: [
+        "https://picsum.photos/seed/abstracto-colorido/1200/1800",
+        "https://picsum.photos/seed/abstracto-colorido-2/1200/1800",
+        "https://picsum.photos/seed/abstracto-colorido-3/1200/1800",
+      ],
     },
     {
       name: "Aurora Azul",
       slug: "aurora-azul",
       description: "Composição em gradientes azuis para ambientes calmos",
       price: 21.9,
-      imageUrl: "/uploads/aurora-azul.jpg",
+      imageUrls: [
+        "https://picsum.photos/seed/aurora-azul/1200/1800",
+        "https://picsum.photos/seed/aurora-azul-2/1200/1800",
+      ],
     },
     {
       name: "Terracota Light",
       slug: "terracota-light",
       description: "Texturas terrosas modernas para decoração aconchegante",
       price: 27.9,
-      imageUrl: "/uploads/terracota-light.jpg",
+      imageUrls: [
+        "https://picsum.photos/seed/terracota-light/1200/1800",
+        "https://picsum.photos/seed/terracota-light-2/1200/1800",
+      ],
     },
     {
       name: "Geometric Gold",
       slug: "geometric-gold",
       description: "Formas geométricas com destaque dourado",
       price: 31.9,
-      imageUrl: "/uploads/geometric-gold.jpg",
+      imageUrls: [
+        "https://picsum.photos/seed/geometric-gold/1200/1800",
+        "https://picsum.photos/seed/geometric-gold-2/1200/1800",
+      ],
     },
     {
       name: "Folhas Tropicais",
       slug: "folhas-tropicais",
       description: "Folhagens tropicais com paleta vibrante",
       price: 36.9,
-      imageUrl: "/uploads/folhas-tropicais.jpg",
+      imageUrls: [
+        "https://picsum.photos/seed/folhas-tropicais/1200/1800",
+        "https://picsum.photos/seed/folhas-tropicais-2/1200/1800",
+      ],
     },
     {
       name: "Névoa Urbana",
       slug: "nevoa-urbana",
       description: "Visual urbano em tons neutros e sofisticados",
       price: 42.9,
-      imageUrl: "/uploads/nevoa-urbana.jpg",
+      imageUrls: [
+        "https://picsum.photos/seed/nevoa-urbana/1200/1800",
+        "https://picsum.photos/seed/nevoa-urbana-2/1200/1800",
+      ],
     },
-  ] as const;
+  ];
 
   const products = await Promise.all(
     productDefinitions.map((product, index) =>

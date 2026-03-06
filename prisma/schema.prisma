@@ -57,7 +57,7 @@ model Product {
   slug        String     @unique
   description String
   price       Float
-  imageUrl    String     // URL da imagem (storage local ou S3)
+  imageUrls   String[]   @default([]) // URLs de imagem (maximo 3)
   collectionId String
   collection   Collection @relation(fields: [collectionId], references: [id])
   
