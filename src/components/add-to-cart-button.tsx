@@ -1,6 +1,6 @@
 "use client";
 
-import { addItemToCart } from "@/lib/cart";
+import { useCart } from "@/context/cart-context";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -9,13 +9,14 @@ type AddToCartButtonProps = {
 };
 
 export function AddToCartButton({ productId }: AddToCartButtonProps) {
+  const { addItem } = useCart();
   const [loading, setLoading] = useState(false);
 
   async function handleAddToCart() {
     setLoading(true);
 
     try {
-      await addItemToCart({ productId, quantity: 1 });
+      await addItem({ productId, quantity: 1 });
 
       toast.success("Produto adicionado ao carrinho");
     } catch (errorValue) {

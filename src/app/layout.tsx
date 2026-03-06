@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { AppToaster } from "@/components/app-toaster";
 import { SiteHeader } from "@/components/site-header";
+import { AuthProvider } from "@/context/auth-context";
+import { CartProvider } from "@/context/cart-context";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -29,16 +31,20 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <div className="flex min-h-screen flex-col">
-          <AppToaster />
-          <SiteHeader />
+        <AuthProvider>
+          <CartProvider>
+            <div className="flex min-h-screen flex-col">
+              <AppToaster />
+              <SiteHeader />
 
-          <div className="flex-1">{children}</div>
+              <div className="flex-1">{children}</div>
 
-          <footer className="site-surface site-muted border-t site-border px-6 py-4 text-center text-sm">
-            © {new Date().getFullYear()} Wallpaper Store
-          </footer>
-        </div>
+              <footer className="site-surface site-muted border-t site-border px-6 py-4 text-center text-sm">
+                © {new Date().getFullYear()} Wallpaper Store
+              </footer>
+            </div>
+          </CartProvider>
+        </AuthProvider>
       </body>
     </html>
   );

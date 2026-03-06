@@ -1,6 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useAuth } from "@/context/auth-context";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { useForm } from "react-hook-form";
@@ -9,7 +10,6 @@ import {
   AuthFormData,
   AuthFormProps,
   AuthSuccessPayload,
-  LoginFormData,
   normalizeRedirectPath,
 } from "@/components/auth-form/index";
 import { toast } from "sonner";
@@ -23,6 +23,7 @@ export function AuthForm({
   requiredRole,
 }: AuthFormProps) {
   const isLogin = mode === "login";
+  const { refreshAuth } = useAuth();
   const router = useRouter();
   const [isNavigating, startNavigationTransition] = useTransition();
   const loginRedirectPath = normalizeRedirectPath(redirectTo);
@@ -52,6 +53,7 @@ export function AuthForm({
       ? {
           email: values.email,
           password: values.password,
+          ...(requiredRole ? { requiredRole } : {}),
         }
       : {
           email: values.email,
@@ -80,6 +82,8 @@ export function AuthForm({
       toast.success(
         isLogin ? "Login realizado com sucesso" : "Conta criada com sucesso",
       );
+
+      await refreshAuth();
 
       setTimeout(() => {
         startNavigationTransition(() => {

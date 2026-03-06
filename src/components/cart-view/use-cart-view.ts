@@ -1,60 +1,22 @@
 "use client";
 
-import {
-  CartItem,
-  clearCart,
-  createOrder,
-  getCart,
-  removeItemFromCart,
-} from "@/lib/cart";
-import { apiFetch } from "@/lib/client-api";
+import { createOrder } from "@/lib/cart";
+import { useAuth } from "@/context/auth-context";
+import { useCart } from "@/context/cart-context";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
 export function useCartView() {
+  const { items, total, loading: cartLoading, removeItem, clearCart } = useCart();
+  const { isAuthenticated, loading: authLoading } = useAuth();
   const router = useRouter();
   const [isRouteTransitionPending, startRouteTransition] = useTransition();
-  const [items, setItems] = useState<CartItem[]>([]);
-  const [loading, setLoading] = useState(true);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
-
-  const total = useMemo(
-    () => items.reduce((acc, item) => acc + item.price * item.quantity, 0),
-    [items],
-  );
-
-  useEffect(() => {
-    async function loadCart() {
-      try {
-        setLoading(true);
-        const [cart, authResponse] = await Promise.all([
-          getCart(),
-          apiFetch("/api/auth/me", { method: "GET", cache: "no-store" }),
-        ]);
-
-        setItems(cart.items);
-        setIsAuthenticated(authResponse.ok);
-      } catch (errorValue) {
-        if (errorValue instanceof Error) {
-          toast.error(errorValue.message);
-        } else {
-          toast.error("Não foi possível carregar o carrinho");
-        }
-        setIsAuthenticated(false);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadCart();
-  }, []);
 
   async function handleClearCart() {
     try {
-      const cart = await clearCart();
-      setItems(cart.items);
+      await clearCart();
       toast.success("Carrinho limpo com sucesso");
     } catch (errorValue) {
       if (errorValue instanceof Error) {
@@ -67,8 +29,7 @@ export function useCartView() {
 
   async function handleRemoveItem(productId: string) {
     try {
-      const cart = await removeItemFromCart(productId);
-      setItems(cart.items);
+      await removeItem(productId);
       toast.success("Item removido do carrinho");
     } catch (errorValue) {
       if (errorValue instanceof Error) {
@@ -104,15 +65,13 @@ export function useCartView() {
         "noopener,noreferrer",
       );
 
-      const nextCart = await clearCart();
-      setItems(nextCart.items);
+      await clearCart();
       toast.success("Pedido enviado para o WhatsApp com sucesso");
     } catch (errorValue) {
       if (
         errorValue instanceof Error &&
         errorValue.message === "Não autenticado"
       ) {
-        setIsAuthenticated(false);
         toast.error("Faça login para finalizar no WhatsApp.");
         startRouteTransition(() => {
           router.push("/login?redirect=/cart");
@@ -130,7 +89,7 @@ export function useCartView() {
   return {
     items,
     total,
-    loading,
+    loading: cartLoading || authLoading,
     checkoutLoading,
     isAuthenticated,
     isRouteTransitionPending,

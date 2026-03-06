@@ -1,11 +1,12 @@
 "use client";
 
-import { apiFetch, parseApiResponse } from "@/lib/client-api";
+import { useAuth } from "@/context/auth-context";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
 export function AdminLogoutButton() {
+  const { logout } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
@@ -13,13 +14,7 @@ export function AdminLogoutButton() {
     setLoading(true);
 
     try {
-      const response = await apiFetch("/api/auth/logout", {
-        method: "POST",
-      });
-
-      await parseApiResponse<{ message: string }>(response, {
-        fallbackErrorMessage: "Não foi possível realizar logout",
-      });
+      await logout();
     } catch (errorValue) {
       if (errorValue instanceof Error) {
         toast.error(errorValue.message);

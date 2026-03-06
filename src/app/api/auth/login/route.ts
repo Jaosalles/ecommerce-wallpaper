@@ -7,13 +7,13 @@ import {
 } from "@/lib/auth";
 import { errorCodes, errorMessages } from "@/lib/error-messages";
 import { prisma } from "@/lib/prisma";
-import { loginSchema } from "@/lib/validators";
+import { loginRequestSchema } from "@/lib/validators";
 import { NextRequest } from "next/server";
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const parsed = loginSchema.safeParse(body);
+    const parsed = loginRequestSchema.safeParse(body);
 
     if (!parsed.success) {
       return fail(
@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { email, password } = parsed.data;
+    const { email, password, requiredRole } = parsed.data;
 
     const user = await prisma.user.findUnique({ where: { email } });
 
@@ -36,6 +36,12 @@ export async function POST(request: NextRequest) {
     const passwordIsValid = await comparePassword(password, user.password);
 
     if (!passwordIsValid) {
+      return fail(errorMessages.auth.invalidCredentials, 401, {
+        code: errorCodes.auth.invalidCredentials,
+      });
+    }
+
+    if (requiredRole && user.role !== requiredRole) {
       return fail(errorMessages.auth.invalidCredentials, 401, {
         code: errorCodes.auth.invalidCredentials,
       });
