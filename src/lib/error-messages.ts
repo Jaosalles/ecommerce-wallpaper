@@ -50,6 +50,12 @@ export const errorCodes = {
     fetchUnexpected: "ORDER_FETCH_UNEXPECTED_ERROR",
     createUnexpected: "ORDER_CREATE_UNEXPECTED_ERROR",
   },
+  storage: {
+    invalidBucket: "STORAGE_INVALID_BUCKET",
+    invalidFile: "STORAGE_INVALID_FILE",
+    fileTooLarge: "STORAGE_FILE_TOO_LARGE",
+    uploadUnexpected: "STORAGE_UPLOAD_UNEXPECTED_ERROR",
+  },
 } as const;
 
 export const errorMessages = {
@@ -95,6 +101,12 @@ export const errorMessages = {
     productNotFound: "Um ou mais produtos não foram encontrados",
     fetchUnexpected: "Erro ao buscar pedidos",
     createUnexpected: "Erro ao criar pedido",
+  },
+  storage: {
+    invalidBucket: "Bucket de upload inválido",
+    invalidFile: "Arquivo inválido para upload",
+    fileTooLarge: "Arquivo excede o limite permitido para o bucket selecionado",
+    uploadUnexpected: "Erro ao enviar arquivo para o storage",
   },
 } as const;
 
